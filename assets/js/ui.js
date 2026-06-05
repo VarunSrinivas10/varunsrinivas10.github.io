@@ -103,8 +103,10 @@ const UI = (() => {
       `<div class="fact-card"><p class="fk">${f.k}</p><p class="fv">${f.v.replace('\n','<br/>')}</p></div>`
     ).join('');
 
+    // id map so sub/leaf node clicks can scroll to the right section
+    const headIds = { Publications: 'cvhead_pubs', Teaching: 'cvhead_teach', Skills: 'cvhead_skills' };
     const cvSecs = sec.cvSections.map(s => `
-      <p class="cv-head">${s.head}</p>
+      <p class="cv-head" id="${headIds[s.head] || 'cvhead_' + s.head.toLowerCase()}">${s.head}</p>
       ${s.items.map(it => `
         <div class="cv-row">
           <span class="cv-yr"></span>
@@ -117,7 +119,8 @@ const UI = (() => {
       ? `<hr class="divider"/><p style="font-size:.78rem;color:var(--muted)"><a href="${sec.cvPdfPath}" style="color:var(--blue)">Download full CV (PDF) →</a></p>`
       : '';
 
-    return `<div class="fact-grid">${facts}</div>${cvSecs}${pdf}`;
+    // Education anchor sits above the fact-grid (cv_edu sub-node scrolls here)
+    return `<div id="cvhead_edu"></div><div class="fact-grid">${facts}</div>${cvSecs}${pdf}`;
   }
 
   function renderMedia(sec) {
@@ -129,12 +132,13 @@ const UI = (() => {
       </div>`
     ).join('');
 
+    // anchor ids match the mediaMap in scrollToSubNode / scrollToLeafNode
     return `
-      <p class="cv-head">Notes</p>
+      <p class="cv-head" id="media_notes">Notes</p>
       ${rows(sec.notes, 'Note')}
-      <p class="cv-head">Videos worth watching</p>
+      <p class="cv-head" id="media_videos">Videos worth watching</p>
       ${rows(sec.videos, 'YouTube')}
-      <p class="cv-head">Books</p>
+      <p class="cv-head" id="media_books">Books</p>
       ${rows(sec.books, 'Book')}
     `;
   }
@@ -142,6 +146,54 @@ const UI = (() => {
   // ── Detail expansion ─────────────────────────────────────────
   function getAllResearchItems() {
     return (CONTENT.research?.subsections || []).flatMap(s => s.items);
+  }
+
+  // ── Scroll helpers (sub and leaf clicks for all sections) ────
+
+  // Maps sub-node id → the anchor element id to scroll to on the right panel
+  function scrollToSubNode(parentId, subId) {
+    // Research: scroll to first card of that subsection
+    if (parentId === 'research') {
+      const sec = CONTENT.research;
+      const ss  = sec?.subsections?.find(s => s.id === subId);
+      const el  = ss?.items?.length ? document.getElementById('card_' + ss.items[0].id) : null;
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    }
+    // CV: scroll to the matching cv-head by data attribute
+    if (parentId === 'cv') {
+      const headMap = { cv_edu: 'edu', cv_pubs: 'pubs', cv_teach: 'teach', cv_skills: 'skills' };
+      const el = document.getElementById('cvhead_' + (headMap[subId] || subId));
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    }
+    // Media: scroll to the matching media section head
+    if (parentId === 'media') {
+      const mediaMap = { m_notes: 'media_notes', m_videos: 'media_videos', m_books: 'media_books' };
+      const el = document.getElementById(mediaMap[subId]);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    }
+  }
+
+  // Maps leaf click → scroll + optional detail open
+  function scrollToLeafNode(grandParentId, parentId, leafIdx) {
+    if (grandParentId === 'research') {
+      const sec = CONTENT.research;
+      const ss  = sec?.subsections?.find(s => s.id === parentId);
+      if (ss?.items?.[leafIdx]) {
+        UI.toggleDetail(ss.items[leafIdx].id, grandParentId);
+      }
+      return;
+    }
+    if (grandParentId === 'cv') {
+      const headMap = { cv_edu: 'edu', cv_pubs: 'pubs', cv_teach: 'teach', cv_skills: 'skills' };
+      const el = document.getElementById('cvhead_' + (headMap[parentId] || parentId));
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (grandParentId === 'media') {
+      const mediaMap = { m_notes: 'media_notes', m_videos: 'media_videos', m_books: 'media_books' };
+      const el = document.getElementById(mediaMap[parentId]);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   // ── Mouse event wiring ───────────────────────────────────────
@@ -193,17 +245,7 @@ const UI = (() => {
         else {
           GraphEngine.setSubState(n.id);
           UI.activateSection(n.parentId);
-          // scroll to subsection
-          setTimeout(() => {
-            const sec = CONTENT[n.parentId];
-            if (sec?.subsections) {
-              const ss = sec.subsections.find(s => s.id === n.id);
-              if (ss?.items?.length) {
-                const el = document.getElementById('card_' + ss.items[0].id);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }
-          }, 120);
+          setTimeout(() => scrollToSubNode(n.parentId, n.id), 120);
         }
         return;
       }
@@ -212,15 +254,7 @@ const UI = (() => {
         GraphEngine.setSubState(n.parentId);
         currentSubState = n.parentId;
         UI.activateSection(n.grandParentId);
-        setTimeout(() => {
-          const sec = CONTENT[n.grandParentId];
-          if (sec?.subsections) {
-            const ss = sec.subsections.find(s => s.id === n.parentId);
-            if (ss?.items?.[n.idx]) {
-              UI.toggleDetail(ss.items[n.idx].id, n.grandParentId);
-            }
-          }
-        }, 150);
+        setTimeout(() => scrollToLeafNode(n.grandParentId, n.parentId, n.idx), 150);
       }
     });
   }
