@@ -64,6 +64,18 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0f14; }
 
 #content-inner { padding: 2.8rem 2.6rem 5rem; }
 
+/* ── PROFILE PHOTO ───────────────────────────────────────────── */
+.h-photo {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center top;
+  border: 2px solid var(--border);
+  margin-bottom: 1.4rem;
+  display: block;
+}
+
 /* ── HOME VIEW ───────────────────────────────────────────────── */
 .h-eyebrow {
   font-family: 'Inter', sans-serif;
