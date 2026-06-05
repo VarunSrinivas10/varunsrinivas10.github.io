@@ -1,20 +1,333 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Varun S. Venkatesh</title>
-  <meta name="description" content="PhD candidate in Materials Science & Engineering at the University of Michigan."/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/css/style.css"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Varun S. Venkatesh</title>
+<meta name="description" content="PhD candidate in Materials Science &amp; Engineering at the University of Michigan."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ── RESET & BASE ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0f14; }
+
+:root {
+  --bg:       #0d0f14;
+  --bg2:      #12151c;
+  --panel:    #f7f4ef;
+  --panel2:   #ede9e1;
+  --panel3:   #e2ddd4;
+  --ink:      #1a1a1a;
+  --muted:    #6b6560;
+  --border:   #d4cec4;
+  --accent:   #e8a020;
+  --blue:     #3a6ea8;
+  --blue2:    #5a90cc;
+  --teal:     #2a7a6a;
+  --rose:     #8a3a4a;
+  --purple:   #5a3a7a;
+  --green:    #3a6a3a;
+}
+
+/* ── LAYOUT ──────────────────────────────────────────────────── */
+#app { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
+
+/* ── LEFT — GRAPH ────────────────────────────────────────────── */
+#graph-side {
+  position: relative;
+  flex: 0 0 55%;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+#graph-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+#back-btn {
+  position: absolute; top: 1.2rem; left: 1.2rem; z-index: 10;
+  font-family: 'Inter', sans-serif;
+  font-size: .68rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(255,255,255,.4); background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12); padding: .35rem .9rem;
+  cursor: pointer; opacity: 0; pointer-events: none;
+  transition: opacity .3s, color .2s, background .2s; border-radius: 2px;
+}
+#back-btn.vis { opacity: 1; pointer-events: all; }
+#back-btn:hover { color: var(--accent); background: rgba(232,160,32,.1); border-color: rgba(232,160,32,.3); }
+
+#graph-label {
+  position: absolute; top: 1.2rem; right: 1.2rem; z-index: 10;
+  font-family: 'Playfair Display', serif; font-size: .9rem; font-style: italic;
+  color: rgba(255,255,255,.3); opacity: 0; transition: opacity .4s; pointer-events: none;
+}
+#graph-label.vis { opacity: 1; }
+
+/* ── RIGHT — CONTENT ─────────────────────────────────────────── */
+#content-side {
+  flex: 1; height: 100%; overflow-y: auto;
+  background: var(--panel);
+  border-left: 1px solid rgba(0,0,0,.08);
+}
+#content-side::-webkit-scrollbar { width: 3px; }
+#content-side::-webkit-scrollbar-thumb { background: var(--border); }
+
+#content-inner { padding: 2.8rem 2.6rem 5rem; }
+
+/* ── PROFILE PHOTO ───────────────────────────────────────────── */
+.h-photo {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center top;
+  border: 2px solid var(--border);
+  margin-bottom: 1.4rem;
+  display: block;
+}
+
+/* ── HOME VIEW ───────────────────────────────────────────────── */
+.h-eyebrow {
+  font-family: 'Inter', sans-serif;
+  font-size: .65rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 1rem;
+}
+.h-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.8rem; line-height: 1.05; color: var(--ink); margin-bottom: .4rem;
+}
+.h-name span { color: var(--blue); font-style: italic; }
+.h-role { font-size: .88rem; color: var(--muted); margin-bottom: 1.8rem; line-height: 1.6; }
+
+.h-bio {
+  font-size: .91rem; line-height: 1.9; color: #2a2826;
+  border-left: 3px solid var(--accent); padding-left: 1rem; margin-bottom: 1.8rem;
+}
+.h-bio strong { font-weight: 600; color: var(--ink); }
+
+.h-links { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 2.2rem; }
+.h-link {
+  font-family: 'Inter', sans-serif; font-size: .72rem; font-weight: 500; letter-spacing: .05em;
+  color: var(--blue); border: 1px solid var(--blue); padding: .28rem .8rem;
+  text-decoration: none; transition: all .18s;
+}
+.h-link:hover { background: var(--blue); color: #fff; }
+
+.h-hint {
+  font-family: 'Inter', sans-serif; font-size: .72rem; color: var(--muted);
+  letter-spacing: .04em; border-top: 1px solid var(--border); padding-top: 1.2rem; margin-bottom: .9rem;
+}
+.nav-btn {
+  display: flex; align-items: center; gap: .6rem;
+  font-family: 'Inter', sans-serif; font-size: .86rem; font-weight: 500;
+  color: var(--ink); background: none; border: none; cursor: pointer;
+  padding: .4rem 0; transition: color .15s; width: 100%; text-align: left;
+}
+.nav-btn::before {
+  content: ''; display: block; width: 20px; height: 1.5px;
+  background: currentColor; transition: width .2s; flex-shrink: 0;
+}
+.nav-btn:hover { color: var(--blue); }
+.nav-btn:hover::before { width: 32px; }
+
+/* ── SECTION VIEW ────────────────────────────────────────────── */
+.s-back {
+  display: flex; align-items: center; gap: .5rem;
+  font-family: 'Inter', sans-serif; font-size: .68rem; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  background: none; border: none; cursor: pointer; margin-bottom: 2rem;
+  padding: 0; transition: color .15s;
+}
+.s-back svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+.s-back:hover { color: var(--ink); }
+
+.s-eyebrow {
+  font-family: 'Inter', sans-serif; font-size: .65rem; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: .7rem;
+}
+.s-title {
+  font-family: 'Playfair Display', serif; font-size: 2rem;
+  color: var(--ink); margin-bottom: .35rem; line-height: 1.15;
+}
+.s-sub { font-size: .85rem; color: var(--muted); margin-bottom: 1.8rem; line-height: 1.6; }
+
+/* Item cards */
+.icard {
+  border: 1px solid var(--border); background: var(--panel);
+  padding: 1rem 1.15rem; margin-bottom: .75rem; cursor: pointer;
+  transition: border-color .18s, background .15s, transform .15s; position: relative;
+}
+.icard:hover { border-color: #aaa; background: var(--panel2); transform: translateY(-1px); }
+.icard.active { border-color: var(--blue); background: var(--panel2); }
+.icard .ic-tag {
+  font-family: 'Inter', sans-serif; font-size: .62rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem;
+}
+.icard .ic-title { font-size: .9rem; font-weight: 600; color: var(--ink); line-height: 1.4; margin-bottom: .2rem; }
+.icard .ic-sub { font-size: .78rem; color: var(--muted); line-height: 1.5; }
+.icard .ic-arr {
+  position: absolute; right: .9rem; top: 50%; transform: translateY(-50%);
+  font-size: 1.1rem; color: var(--border); transition: color .15s, right .15s;
+}
+.icard:hover .ic-arr { color: var(--blue); right: .6rem; }
+
+/* Detail box */
+.detbox {
+  background: var(--panel2); border: 1px solid var(--border);
+  border-left: 3px solid var(--blue);
+  padding: 1.3rem 1.4rem; margin-bottom: 1.2rem;
+  animation: fadeup .28s ease;
+}
+@keyframes fadeup {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.det-title  { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--ink); line-height: 1.25; margin-bottom: .6rem; }
+.det-authors{ font-size: .8rem; color: var(--muted); margin-bottom: .2rem; }
+.det-venue  { font-size: .78rem; color: var(--blue); font-style: italic; margin-bottom: .9rem; }
+.det-body   { font-size: .85rem; line-height: 1.85; color: #2a2826; margin-bottom: .9rem; }
+.det-links  { display: flex; gap: .5rem; flex-wrap: wrap; }
+.det-link {
+  font-family: 'Inter', sans-serif; font-size: .7rem; font-weight: 500;
+  color: var(--blue); border: 1px solid var(--blue); padding: .25rem .7rem;
+  text-decoration: none; transition: all .15s; background: none; cursor: pointer;
+}
+.det-link:hover { background: var(--blue); color: #fff; }
+
+/* Fact grid */
+.fact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: 1.4rem; }
+.fact-card { background: var(--panel2); border: 1px solid var(--border); padding: .9rem 1rem; }
+.fact-card .fk {
+  font-family: 'Inter', sans-serif; font-size: .62rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .3rem;
+}
+.fact-card .fv { font-size: .85rem; font-weight: 500; color: var(--ink); line-height: 1.5; }
+
+/* CV */
+.cv-head {
+  font-family: 'Inter', sans-serif; font-size: .65rem; font-weight: 600;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--blue);
+  border-bottom: 1px solid var(--border); padding-bottom: .3rem; margin: 1.3rem 0 .7rem;
+}
+.cv-row { display: grid; grid-template-columns: 72px 1fr; gap: .25rem .8rem; margin-bottom: .7rem; font-size: .84rem; }
+.cv-yr  { color: var(--muted); font-size: .75rem; padding-top: .1rem; font-family: 'Inter', sans-serif; }
+.cv-d strong { display: block; font-weight: 600; color: var(--ink); }
+.cv-d span   { color: var(--muted); font-size: .75rem; }
+
+/* Media rows */
+.mrow { border-bottom: 1px solid var(--border); padding: .8rem 0; }
+.mrow:last-child { border-bottom: none; }
+.mrow-tag   { font-family: 'Inter', sans-serif; font-size: .6rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .2rem; }
+.mrow-title { font-size: .88rem; font-weight: 500; color: var(--ink); margin-bottom: .15rem; }
+.mrow-sub   { font-size: .77rem; color: var(--muted); line-height: 1.5; }
+
+.subsec-head {
+  font-family: 'Playfair Display', serif; font-size: 1.1rem;
+  color: var(--ink); margin-bottom: .3rem;
+}
+.subsec-sub { font-size: .78rem; color: var(--muted); margin-bottom: 1rem; }
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 1.3rem 0; }
+
+/* ── TOOLTIP ─────────────────────────────────────────────────── */
+#tooltip {
+  position: fixed;
+  background: rgba(15,17,25,.92); color: rgba(255,255,255,.9);
+  font-family: 'Inter', sans-serif; font-size: .7rem; letter-spacing: .03em;
+  padding: 5px 11px; pointer-events: none; opacity: 0; transition: opacity .1s;
+  z-index: 300; white-space: nowrap; border-radius: 2px;
+}
+
+/* ── YOUTUBE CARDS ───────────────────────────────────────────── */
+.yt-grid {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  margin-bottom: .5rem;
+}
+.yt-card {
+  display: flex;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: .75rem;
+  transition: border-color .18s, background .15s;
+}
+.yt-card:hover { border-color: #aaa; background: var(--panel2); }
+.yt-thumb-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 140px;
+  height: 80px;
+  display: block;
+  overflow: hidden;
+  background: #111;
+}
+.yt-thumb {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity .2s;
+}
+.yt-thumb-wrap:hover .yt-thumb { opacity: .75; }
+.yt-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: rgba(255,255,255,.9);
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.yt-thumb-wrap:hover .yt-play { opacity: 1; }
+.yt-info { flex: 1; min-width: 0; }
+
+/* ── IMAGE GALLERY ───────────────────────────────────────────── */
+.img-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .5rem;
+  margin: .9rem 0 .5rem;
+}
+.gallery-img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  display: block;
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+  transition: opacity .15s;
+}
+.gallery-img:hover { opacity: .85; }
+
+/* Lightbox */
+#lightbox {
+  display: none;
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.88);
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+#lightbox.open { display: flex; }
+#lightbox img {
+  max-width: 90vw;
+  max-height: 88vh;
+  object-fit: contain;
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+</style>
 </head>
 <body>
 <div id="app">
   <div id="graph-side">
     <canvas id="graph-canvas"></canvas>
-    <button id="back-btn">← overview</button>
+    <button id="back-btn">&#8592; overview</button>
     <span id="graph-label"></span>
   </div>
   <div id="content-side">
@@ -24,30 +337,1201 @@
     </div>
   </div>
 </div>
-
 <div id="tooltip"></div>
-
-<!-- Lightbox for gallery images -->
-<div id="lightbox">
-  <img id="lightbox-img" src="" alt=""/>
-</div>
-
-<script src="assets/js/data.js"></script>
-<script src="assets/js/graph.js"></script>
-<script src="assets/js/ui.js"></script>
+<div id="lightbox"><img id="lightbox-img" src="" alt=""/></div>
 <script>
-  UI.init();
+// ═══════════════════════════════════════════════════════════════
+//  data.js  —  YOUR CONTENT. Edit this file to update the site.
+//
+//  GRAPH structure: hub → main nodes → sub-nodes (2 levels only)
+//  No leaves. Sub-node ids must match anchor ids in CV/Media.
+//
+//  Research detail items can have:
+//    images: ['assets/img/fig1.jpg', ...]   → gallery below description
+//
+//  Media videos can have:
+//    url: 'https://youtube.com/watch?v=...' → thumbnail auto-extracted
+// ═══════════════════════════════════════════════════════════════
 
-  // Gallery image lightbox
-  document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('gallery-img')) {
-      document.getElementById('lightbox-img').src = e.target.src;
-      document.getElementById('lightbox').classList.add('open');
+const PROFILE = {
+  eyebrow: 'Materials Science · University of Michigan',
+  name:    'Varun S.\nVenkatesh',
+  role:    'PhD Candidate · Shahani Lab · Ann Arbor, MI',
+  bio:     'I study how <strong>grain boundaries</strong> move, vanish, and transform in three dimensions — combining synchrotron diffraction contrast tomography with <strong>graph neural networks</strong> to turn polycrystalline microstructures into learnable graphs. My work lives at the intersection of experiment, computation, and materials theory.',
+  photo:   'assets/img/profile.jpg',   // set null to hide
+  links: [
+    { label: 'varunsv@umich.edu', href: 'mailto:varunsv@umich.edu' },
+    { label: 'Google Scholar',    href: 'https://scholar.google.com', external: true },
+    { label: 'GitHub',            href: 'https://github.com',         external: true },
+    { label: 'ORCID',             href: 'https://orcid.org',          external: true },
+    { label: 'LinkedIn',          href: 'https://linkedin.com',       external: true },
+  ],
+};
+
+// ── GRAPH (hub → main → sub, 2 levels) ──────────────────────────
+// Sub-node ids for CV must match anchorId fields in CONTENT.cv.cvSections.
+// Sub-node ids for Media must match id attributes in renderMedia: m_notes, m_videos, m_books.
+
+const GRAPH = {
+  hub: { label:'VSV', fullLabel:'Varun\nVenkatesh', color:'#e8a020', glow:'#f0c060' },
+
+  main: [
+    { id:'research', label:'Research',         angle:270, color:'#3a6ea8', glow:'#5a90cc' },
+    { id:'cv',       label:'CV',               angle:30,  color:'#2a7a6a', glow:'#4aaa8a' },
+    { id:'media',    label:'Media &\nReading', angle:150, color:'#8a3a4a', glow:'#c05a6a' },
+  ],
+
+  sub: {
+    research: [
+      { id:'r_theory', label:'Theory &\nKinetics',  color:'#5a3a7a', glow:'#8a6ab0' },
+      { id:'r_algo',   label:'Algorithm\nDev',       color:'#3a6ea8', glow:'#5a90cc' },
+      { id:'r_nn',     label:'Neural\nNetworks',     color:'#2a7a6a', glow:'#4aaa8a' },
+    ],
+    cv: [
+      { id:'cv_edu',     label:'Education',      color:'#2a7a6a', glow:'#4aaa8a' },
+      { id:'cv_pubs',    label:'Publications',   color:'#3a6ea8', glow:'#5a90cc' },
+      { id:'cv_posters', label:'Posters &\nTalks', color:'#5a3a7a', glow:'#8a6ab0' },
+      { id:'cv_awards',  label:'Awards &\nGrants', color:'#8a5a2a', glow:'#c08a4a' },
+    ],
+    media: [
+      { id:'m_notes',  label:'Notes',  color:'#8a3a4a', glow:'#c05a6a' },
+      { id:'m_videos', label:'Videos', color:'#5a3a7a', glow:'#8a6ab0' },
+      { id:'m_books',  label:'Books',  color:'#3a6a3a', glow:'#5aaa5a' },
+    ],
+  },
+};
+
+// ── CONTENT ──────────────────────────────────────────────────────
+
+const CONTENT = {
+
+  // ── RESEARCH ────────────────────────────────────────────────
+  research: {
+    eyebrow:'Research', title:'Research Projects',
+    sub:'Three interconnected themes: building theory, developing algorithms, and deploying neural networks on polycrystalline microstructures.',
+    subsections: [
+      {
+        id:'r_theory', tag:'Theory & Kinetics',
+        title:'Grain Boundary Kinetics', sub:'Analytical derivations for 3D grain boundary motion',
+        items: [
+          { id:'rt1', tag:'Derivation',
+            title:'Grain Boundary Kinetics (3D Kelvin Cell)',
+            sub:'Extension of Mattissen et al. (2005) to 3D',
+            detail:{
+              authors:null, venue:'Ongoing analytical work',
+              body:'Extension of the Mattissen et al. (2005) framework to 3D using Kelvin cell geometry. Derives corrected grain boundary velocity accounting for triple-line drag and quadruple node drag. V_corr = V_free · √3 K_TL / (√3 K_TL + 2), subject to a self-consistency condition.',
+              // Add image paths here, e.g: images:['assets/img/kelvin_cell.png']
+              images:[],
+              links:[],
+            },
+          },
+        ],
+      },
+      {
+        id:'r_algo', tag:'Algorithm Development',
+        title:'Computational Methods', sub:'Pipelines for microstructural feature extraction and 3D visualization',
+        items: [
+          { id:'ra1', tag:'Pipeline',
+            title:'MoO₃/Fe₂O₃ 3D Visualization Pipeline',
+            sub:'MATLAB — synchrotron tomography registration and rendering',
+            detail:{
+              authors:null, venue:'Ongoing · Synchrotron tomography',
+              body:'MATLAB pipeline for co-registering pre- and post-reaction synchrotron tomography datasets via log-polar FFT and phase correlation. Isosurface rendering with custom RGB colors: MoO₃ [172 221 233]/255, Fe₂O₃ [219 107 134]/255, product phase [247 169 85]/255.',
+              images:[],
+              links:[],
+            },
+          },
+          { id:'ra2', tag:'Reconstruction',
+            title:'Al–Al₃Ni Nanotomography (FXI beamline, NSLS-II)',
+            sub:'Prior-constrained silhouette carving for eutectic microstructures',
+            detail:{
+              authors:null, venue:'NSLS-II · FXI beamline',
+              body:'Prior-constrained silhouette carving for 3D reconstruction of Al–Al₃Ni eutectic microstructures. Targets quantitative characterization of lamellar phase morphology in directionally solidified samples.',
+              images:[],
+              links:[],
+            },
+          },
+        ],
+      },
+      {
+        id:'r_nn', tag:'Neural Networks',
+        title:'Machine Learning on Grain Boundary Graphs', sub:'GNNs and statistical feature selection for GB kinetics',
+        items: [
+          { id:'rn1', tag:'Journal · 2025 (submitted)',
+            title:'GNN Classification of Grain Boundary Kinetic Outcomes',
+            sub:'V.S. Venkatesh, Y. Zhang, A.J. Shahani — Acta Materialia',
+            detail:{
+              authors:'V.S. Venkatesh, Y. Zhang, A.J. Shahani',
+              venue:'Acta Materialia, 2025 (submitted)',
+              body:'Edge-centric message-passing GNN on 3-hop grain boundary subgraphs. No node attributes — all information lives on edges. AdamW with cosine decay, early stopping on macro-F1. Labels: persist (0), appear (1), disappear (2).',
+              images:[],
+              links:[{label:'Preprint',href:'#'},{label:'Code',href:'#'}],
+            },
+          },
+          { id:'rn2', tag:'Conference · 2025 (in press)',
+            title:'Feature Engineering of Grain Boundary Descriptors',
+            sub:'V.S. Venkatesh, Y. Zhang, A.J. Shahani — IOP Conference Series',
+            detail:{
+              authors:'V.S. Venkatesh, Y. Zhang, A.J. Shahani',
+              venue:'IOP Conference Series: MSE, 2025 (in press)',
+              body:'Two-stage statistical framework: Pearson correlation then Kruskal-Wallis testing. Final 8 descriptors: triple-line count, quadruple junction count, Coxeter residual, GB area, perimeter, misorientation angle, CSL flag, curvature spread.',
+              images:[],
+              links:[{label:'DOI',href:'#'}],
+            },
+          },
+          { id:'rn3', tag:'Poster · 2025',
+            title:'Graph-Based Tracking of Grain Boundary Networks via DCT',
+            sub:'V.S. Venkatesh, Z. Croft, K. Thornton, A.J. Shahani — RexGG 2025',
+            detail:{
+              authors:'V.S. Venkatesh, Z. Croft, K. Thornton, A.J. Shahani',
+              venue:'Recrystallization and Grain Growth Conference, 2025',
+              body:'Graph-based pipeline for tracking grain boundary networks through 4D synchrotron DCT. Shows GB graph evolution during recrystallization and introduces the featurization pipeline for querying graphs across time steps.',
+              images:[],
+              links:[{label:'Abstract',href:'#'}],
+            },
+          },
+        ],
+      },
+    ],
+  },
+
+  // ── CV ────────────────────────────────────────────────────────
+  cv: {
+    eyebrow:'Curriculum Vitae', title:'CV',
+    sub:'Education, publications, presentations, awards, teaching, and skills.',
+    facts: [
+      { k:'PhD',     v:'MSE · University of Michigan\n2021 – present' },
+      { k:'Advisor', v:'Prof. Ashwin J. Shahani\nShahani Lab' },
+      { k:'BS',      v:'MSE · University of Michigan\n2017 – 2021' },
+      { k:'Contact', v:'varunsv@umich.edu' },
+    ],
+    // anchorId MUST match the sub-node id in GRAPH.sub.cv
+    cvSections: [
+      { head:'Publications', anchorId:'cv_pubs', items:[
+        { year:'2025', title:'GNN Classification of GB Kinetic Outcomes',  sub:'Acta Materialia (submitted) · V.S. Venkatesh, Y. Zhang, A.J. Shahani' },
+        { year:'2025', title:'Feature Engineering of GB Descriptors',      sub:'IOP Conference Series (in press) · V.S. Venkatesh, Y. Zhang, A.J. Shahani' },
+      ]},
+      { head:'Posters & Presentations', anchorId:'cv_posters', items:[
+        { year:'2025', title:'Graph-Based Tracking of Grain Boundary Networks', sub:'Poster — Recrystallization and Grain Growth Conference (RexGG 2025)' },
+        { year:'',     title:'Add your talks here',                             sub:'Conference name · Location · Year' },
+      ]},
+      { head:'Awards & Grants', anchorId:'cv_awards', items:[
+        { year:'',     title:'Add your fellowships and awards here', sub:'Awarding body · Year' },
+        { year:'',     title:'Add your grants and funding here',     sub:'Funding agency · Amount · Year' },
+      ]},
+      { head:'Teaching', anchorId:'cv_teach', items:[
+        { year:'',     title:'Graduate Student Instructor', sub:'Add your course and term — Dept. of MSE, University of Michigan' },
+        { year:'',     title:'Course Assistant',            sub:'Add your course and term' },
+      ]},
+      { head:'Skills', anchorId:'cv_skills', items:[
+        { year:'',     title:'Python',   sub:'PyTorch Geometric, NumPy, scikit-learn, matplotlib, SciPy' },
+        { year:'',     title:'MATLAB',   sub:'Image processing, 3D visualization, MTEX, PolyProc' },
+        { year:'',     title:'Methods',  sub:'Synchrotron DCT, EBSD, 3D tomographic reconstruction, GNN' },
+        { year:'',     title:'Software', sub:'DREAM.3D, ImageJ/Fiji, COMSOL, Zotero' },
+      ]},
+    ],
+    cvPdfPath:'assets/cv.pdf',
+  },
+
+  // ── MEDIA ─────────────────────────────────────────────────────
+  media: {
+    eyebrow:'Media & Reading', title:'Notes, Videos & Books',
+    sub:'Short writing, channels worth watching, and books that shaped how I think.',
+    notes: [
+      { title:'What does a grain boundary look like in 3D?',    sub:'How synchrotron DCT reconstructs grain boundaries and what we can extract from them.' },
+      { title:'Why graph neural networks for microstructure?',  sub:'Treating polycrystals as graphs rather than images — and what edge-centric message passing gains you.' },
+      { title:'A note on Kruskal-Wallis for feature selection', sub:'When Pearson correlation alone is not enough.' },
+    ],
+    videos: [
+      // Add url: 'https://youtube.com/watch?v=VIDEO_ID' to get thumbnail automatically
+      { title:'3Blue1Brown — But what is a neural network?',
+        sub:'The clearest visual intro to how neural networks actually work.',
+        url:'https://www.youtube.com/watch?v=aircAruvnKk' },
+      { title:'Veritasium — The Most Controversial Problem in Philosophy',
+        sub:'Physics and engineering storytelling at its best.',
+        url:'https://www.youtube.com/watch?v=XTSc5lMWS_k' },
+      { title:'MIT OCW — 3.012 Fundamentals of Materials Science',
+        sub:'Depth on thermodynamics, bonding, and structure.',
+        url:'' },
+    ],
+    books: [
+      { title:'The Craft of Research',                   sub:'Wayne Booth et al. — the best book on how to think about and write research.' },
+      { title:'Thinking, Fast and Slow',                 sub:'Kahneman — essential reading on how we reason and where we go wrong.' },
+      { title:'The Structure of Scientific Revolutions', sub:'Kuhn — still the most honest account of how science actually progresses.' },
+    ],
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  graph.js — Canvas engine. Dijkstra runs through ALL nodes
+//  (real + dummy). Clicking a main node animates the shortest
+//  path from hub through the full graph, then zooms in.
+// ═══════════════════════════════════════════════════════════════
+
+var GraphEngine = (function() {
+
+  // ── State ────────────────────────────────────────────────────
+  var canvas, ctx, dpr;
+  var W = 0, H = 0, animT = 0, hovId = null;
+  var cam  = {x:0,y:0,z:1};
+  var camT = {x:0,y:0,z:1};
+  var appState = 'home';
+  var mainProg = {};
+  var hovS = {};
+  var ripples = [], particles = [];
+  var wobble = {};
+
+  // All nodes: hub + main + sub + dummy (all live in world-space coords)
+  var allNodes = [];   // {id, x, y, r, type, label?, color?, glow?, ...}
+  var allEdges = [];   // {a, b, w, key}  — full adjacency for Dijkstra
+
+  // Dijkstra animation
+  var DS = null; // null when idle
+  /*  DS = {
+        phase: 'scanning' | 'pathing' | 'zooming',
+        targetId,
+        settledOrder: [id,...],   visited nodes in Dijkstra order
+        shortestPath: [id,...],   hub→...→target
+        visitedSet: Set<id>,
+        pathSet: Set<edgeKey>,
+        edgeFlow: {},             edgeKey → 0..1 brightness
+        nodeFlow: {},             id → 0..1 brightness
+        scanIdx: 0,               which settled node to light next
+        pathIdx: 0,               which path edge to light next
+        zoomProgress: 0,
+        dummyAlpha: 1,
+        onComplete: fn
+      }
+  */
+
+  var MAIN_SPOKE  = 170;
+  var SUB_SPOKE   = 95;
+  var DUMMY_COUNT = 48;
+  var EDGE_CONNECT = 3; // avg edges per dummy node
+
+  // ── World setup ───────────────────────────────────────────────
+  function buildWorld() {
+    allNodes = [];
+    allEdges = [];
+    mainProg = {};
+
+    // Hub
+    allNodes.push({id:'hub', x:0, y:0, r:44, type:'hub',
+      label:GRAPH.hub.label, fullLabel:GRAPH.hub.fullLabel,
+      color:GRAPH.hub.color, glow:GRAPH.hub.glow});
+
+    // Main nodes + sub nodes
+    GRAPH.main.forEach(function(mn) {
+      var rad = mn.angle * Math.PI / 180;
+      var mx = Math.cos(rad)*MAIN_SPOKE, my = Math.sin(rad)*MAIN_SPOKE;
+      allNodes.push({id:mn.id, x:mx, y:my, r:38, type:'main',
+        label:mn.label, color:mn.color, glow:mn.glow, angle:mn.angle});
+      mainProg[mn.id] = 0;
+
+      var subs = GRAPH.sub[mn.id] || [];
+      subs.forEach(function(s, si) {
+        var t = subs.length===1 ? 0 : (si/(subs.length-1)-0.5);
+        var a = rad + t*Math.PI*0.65;
+        var sx = mx + Math.cos(a)*SUB_SPOKE;
+        var sy = my + Math.sin(a)*SUB_SPOKE;
+        allNodes.push({id:s.id, parentId:mn.id, x:sx, y:sy, r:28, type:'sub',
+          label:s.label, color:s.color, glow:s.glow, idx:si});
+        mainProg[s.id] = 0;
+      });
+    });
+
+    // Dummy nodes — scattered in a similar world-radius to main nodes
+    var rng = function(a,b){return a+Math.random()*(b-a);};
+    for (var i=0; i<DUMMY_COUNT; i++) {
+      var angle, dist, dx, dy, tries=0;
+      do {
+        angle = rng(0, Math.PI*2);
+        dist  = rng(55, 290);
+        dx = Math.cos(angle)*dist;
+        dy = Math.sin(angle)*dist;
+        tries++;
+        // avoid placing too close to hub
+      } while (tries<40 && Math.hypot(dx,dy)<50);
+      allNodes.push({id:'d'+i, x:dx, y:dy, r:rng(5,11), type:'dummy',
+        phase:rng(0,Math.PI*2), vx:rng(-0.05,0.05), vy:rng(-0.05,0.05),
+        alpha:rng(0.3,0.6)});
     }
-  });
-  document.getElementById('lightbox').addEventListener('click', function() {
-    document.getElementById('lightbox').classList.remove('open');
-  });
+
+    buildEdges();
+  }
+
+  function buildEdges() {
+    allEdges = [];
+    var edgeSet = {};
+
+    function addEdge(aId, bId) {
+      var key = [aId,bId].sort().join('|');
+      if (edgeSet[key]) return;
+      edgeSet[key] = true;
+      var a = nodeById(aId), b = nodeById(bId);
+      if (!a||!b) return;
+      allEdges.push({a:aId, b:bId, key:key, w:Math.hypot(a.x-b.x, a.y-b.y)});
+    }
+
+    // Real graph edges
+    GRAPH.main.forEach(function(mn) {
+      addEdge('hub', mn.id);
+      (GRAPH.sub[mn.id]||[]).forEach(function(s) { addEdge(mn.id, s.id); });
+    });
+
+    // Dummy-to-dummy: each dummy connects to its K nearest dummies
+    var dummies = allNodes.filter(function(n){return n.type==='dummy';});
+    dummies.forEach(function(d, i) {
+      var nearest = dummies
+        .map(function(o,j){return {j:j,id:o.id,dist:Math.hypot(d.x-o.x,d.y-o.y)};})
+        .filter(function(x){return x.id!==d.id;})
+        .sort(function(a,b){return a.dist-b.dist;})
+        .slice(0, EDGE_CONNECT);
+      nearest.forEach(function(nb){ addEdge(d.id, nb.id); });
+    });
+
+    // Dummy-to-real: each dummy connects to its nearest real node if close enough
+    var realNodes = allNodes.filter(function(n){return n.type==='hub'||n.type==='main';});
+    dummies.forEach(function(d) {
+      var nearest = realNodes
+        .map(function(r){return {id:r.id, dist:Math.hypot(d.x-r.x,d.y-r.y)};})
+        .sort(function(a,b){return a.dist-b.dist;})[0];
+      if (nearest && nearest.dist < 220 && Math.random()<0.45)
+        addEdge(d.id, nearest.id);
+    });
+  }
+
+  function nodeById(id) {
+    for (var i=0;i<allNodes.length;i++) if (allNodes[i].id===id) return allNodes[i];
+    return null;
+  }
+
+  // ── Dijkstra through ALL nodes ────────────────────────────────
+  function dijkstra(startId, endId) {
+    var dist = {}, prev = {}, visited = {};
+    allNodes.forEach(function(n){ dist[n.id]=Infinity; prev[n.id]=null; });
+    dist[startId] = 0;
+
+    // Build adjacency map
+    var adj = {};
+    allEdges.forEach(function(e) {
+      if (!adj[e.a]) adj[e.a]=[];
+      if (!adj[e.b]) adj[e.b]=[];
+      adj[e.a].push({to:e.b, w:e.w});
+      adj[e.b].push({to:e.a, w:e.w});
+    });
+
+    var settled = [];
+    var pq = [{id:startId,d:0}];
+
+    while (pq.length) {
+      pq.sort(function(a,b){return a.d-b.d;});
+      var cur = pq.shift();
+      if (visited[cur.id]) continue;
+      visited[cur.id] = true;
+      settled.push(cur.id);
+      if (cur.id===endId) break;
+      (adj[cur.id]||[]).forEach(function(nb) {
+        var nd = dist[cur.id]+nb.w;
+        if (nd < dist[nb.to]) {
+          dist[nb.to]=nd; prev[nb.to]=cur.id;
+          pq.push({id:nb.to,d:nd});
+        }
+      });
+    }
+
+    var path=[], c=endId;
+    while(c){ path.unshift(c); c=prev[c]; }
+    return {path:path, settled:settled};
+  }
+
+  // ── Start animation ───────────────────────────────────────────
+  function startDijkstra(targetId, onComplete) {
+    var result = dijkstra('hub', targetId);
+    var pathSet = new Set();
+    for (var i=0;i<result.path.length-1;i++) {
+      pathSet.add([result.path[i],result.path[i+1]].sort().join('|'));
+    }
+    DS = {
+      phase:        'scanning',
+      targetId:     targetId,
+      settledOrder: result.settled,
+      shortestPath: result.path,
+      pathSet:      pathSet,
+      edgeFlow:     {},
+      nodeFlow:     {},
+      scanIdx:      0,
+      pathIdx:      0,
+      zoomProgress: 0,
+      dummyAlpha:   1,
+      onComplete:   onComplete,
+    };
+  }
+
+  // ── Animation tick ────────────────────────────────────────────
+  function tickDS() {
+    if (!DS) return;
+
+    if (DS.phase==='scanning') {
+      // Light up settled nodes one by one (fast)
+      var SETTLE_RATE = 3; // nodes per frame
+      for (var k=0;k<SETTLE_RATE;k++) {
+        if (DS.scanIdx >= DS.settledOrder.length) {
+          DS.phase='pathing'; DS.pathIdx=0; return;
+        }
+        var nid = DS.settledOrder[DS.scanIdx++];
+        DS.nodeFlow[nid] = 0; // will ramp up
+      }
+      // Glow ramp for all settled nodes
+      DS.settledOrder.slice(0, DS.scanIdx).forEach(function(nid) {
+        DS.nodeFlow[nid] = Math.min(1, (DS.nodeFlow[nid]||0)+0.06);
+      });
+      // Dim non-path edges, slightly brighten visited edges
+      allEdges.forEach(function(e) {
+        var aSettled = DS.nodeFlow[e.a]>0, bSettled = DS.nodeFlow[e.b]>0;
+        if (aSettled&&bSettled) {
+          DS.edgeFlow[e.key] = Math.min(0.35, (DS.edgeFlow[e.key]||0)+0.04);
+        }
+      });
+    }
+
+    if (DS.phase==='pathing') {
+      // Flash the shortest path edges one by one (slower, dramatic)
+      if (animT % 6 === 0) {
+        if (DS.pathIdx < DS.shortestPath.length-1) {
+          var pk = [DS.shortestPath[DS.pathIdx],DS.shortestPath[DS.pathIdx+1]].sort().join('|');
+          DS.edgeFlow[pk] = 1.0; // max brightness
+          DS.nodeFlow[DS.shortestPath[DS.pathIdx]] = 1.0;
+          DS.pathIdx++;
+        } else {
+          DS.nodeFlow[DS.targetId] = 1.0;
+          // Hold for a beat then zoom
+          if (!DS.holdStart) DS.holdStart = animT;
+          if (animT - DS.holdStart > 30) {
+            DS.phase = 'zooming';
+            if (DS.onComplete) DS.onComplete(DS.targetId);
+          }
+        }
+      }
+      // Keep ramping all settled nodes
+      DS.settledOrder.forEach(function(nid) {
+        DS.nodeFlow[nid] = Math.min(1, (DS.nodeFlow[nid]||0)+0.04);
+      });
+    }
+
+    if (DS.phase==='zooming') {
+      DS.zoomProgress = Math.min(1, DS.zoomProgress+0.03);
+      DS.dummyAlpha   = Math.max(0, 1 - DS.zoomProgress*1.8);
+      if (DS.zoomProgress>=1) DS=null;
+    }
+  }
+
+  // ── Draw helpers ─────────────────────────────────────────────
+  function ts(wx,wy){return{sx:W/2+(wx-cam.x)*cam.z,sy:H/2+(wy-cam.y)*cam.z};}
+
+  function circle(sx,sy,r,fill,stroke,sw) {
+    ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
+    if(fill){ctx.fillStyle=fill;ctx.fill();}
+    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=sw||1;ctx.stroke();}
+  }
+
+  function glowCircle(sx,sy,r,fill,glowColor,glowR) {
+    if(glowColor){
+      var g=ctx.createRadialGradient(sx,sy,r*0.2,sx,sy,glowR);
+      g.addColorStop(0,glowColor+'66'); g.addColorStop(1,glowColor+'00');
+      ctx.beginPath();ctx.arc(sx,sy,glowR,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    }
+    circle(sx,sy,r,fill);
+  }
+
+  function ring(sx,sy,r,color,lw,alpha) {
+    ctx.save();ctx.globalAlpha=alpha!=null?alpha:1;
+    ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
+    ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.stroke();
+    ctx.restore();
+  }
+
+  function line(ax,ay,bx,by,color,alpha,lw,dash) {
+    ctx.save();ctx.globalAlpha=alpha!=null?alpha:1;
+    ctx.beginPath();ctx.moveTo(ax,ay);
+    // gentle curve
+    var mx=(ax+bx)/2,my=(ay+by)/2;
+    ctx.quadraticCurveTo(mx+(ay-by)*0.1,my+(bx-ax)*0.1,bx,by);
+    ctx.strokeStyle=color;ctx.lineWidth=lw||1;
+    if(dash){ctx.setLineDash(dash);ctx.lineDashOffset=-animT*0.015;}
+    ctx.stroke();ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function label(sx,sy,text,size,color,weight) {
+    var lines=text.split('\n');
+    ctx.save();
+    ctx.font=(weight||'400')+' '+size+'px \'Inter\',sans-serif';
+    ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';
+    var lh=size*1.25, oy=-(lines.length-1)*lh/2;
+    lines.forEach(function(l,i){ctx.fillText(l,sx,sy+oy+i*lh);});
+    ctx.restore();
+  }
+
+  function serifLabel(sx,sy,text,size,color) {
+    var lines=text.split('\n');
+    ctx.save();
+    ctx.font=size+'px \'Playfair Display\',serif';
+    ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';
+    var lh=size*1.3, oy=-(lines.length-1)*lh/2;
+    lines.forEach(function(l,i){ctx.fillText(l,sx,sy+oy+i*lh);});
+    ctx.restore();
+  }
+
+  function wob(id) {
+    if(!wobble[id]) wobble[id]=Math.random()*Math.PI*2;
+    return Math.sin(animT*0.04+wobble[id])*1.4;
+  }
+
+  function particle(ax,ay,bx,by,color) {
+    var t=Math.random();
+    particles.push({
+      x:ax+(bx-ax)*t,y:ay+(by-ay)*t,
+      vx:(bx-ax)*0.003*(0.5+Math.random()),
+      vy:(by-ay)*0.003*(0.5+Math.random()),
+      r:1.5+Math.random()*1.5, color:color, alpha:0.8
+    });
+  }
+
+  // ── Main loop ─────────────────────────────────────────────────
+  function loop() {
+    requestAnimationFrame(loop);
+    animT++;
+
+    var pw=canvas.parentElement.clientWidth, ph=canvas.parentElement.clientHeight;
+    if(W!==pw||H!==ph){
+      W=pw;H=ph;
+      canvas.width=W*dpr;canvas.height=H*dpr;
+      canvas.style.width=W+'px';canvas.style.height=H+'px';
+      ctx.scale(dpr,dpr);
+      if(allNodes.length===0) buildWorld();
+    }
+
+    cam.x+=(camT.x-cam.x)*0.07;
+    cam.y+=(camT.y-cam.y)*0.07;
+    cam.z+=(camT.z-cam.z)*0.07;
+
+    // Sub-node expand progress
+    GRAPH.main.forEach(function(mn){
+      var want=appState===mn.id?1:0;
+      mainProg[mn.id]=(mainProg[mn.id]||0)+(want-mainProg[mn.id])*0.09;
+      (GRAPH.sub[mn.id]||[]).forEach(function(s){
+        mainProg[s.id]=(mainProg[s.id]||0)+(want-mainProg[s.id])*0.09;
+      });
+    });
+
+    tickDS();
+    ctx.clearRect(0,0,W,H);
+
+    // ── Background ──
+    ctx.save();
+    for(var i=0;i<60;i++){
+      var px=((i*73.1)%W+W)%W, py=((i*53.7)%H+H)%H;
+      var pa=0.1+0.07*Math.sin(animT*0.02+i);
+      ctx.beginPath();ctx.arc(px,py,0.7+((i*31)%10)*0.12,0,Math.PI*2);
+      ctx.fillStyle='hsla('+((i*137.5)%360)+',35%,70%,'+pa+')';ctx.fill();
+    }
+    ctx.restore();
+
+    // Animated grid
+    ctx.save();ctx.strokeStyle='rgba(255,255,255,.02)';ctx.lineWidth=0.5;
+    var gs=60*cam.z;
+    var ox=((W/2-cam.x*cam.z)%gs+gs)%gs, oy=((H/2-cam.y*cam.z)%gs+gs)%gs;
+    for(var x=ox-gs;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(var y=oy-gs;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    ctx.restore();
+
+    var dAlpha = DS ? DS.dummyAlpha : (appState==='home'?1:0.15);
+
+    // ── Draw ALL edges ────────────────────────────────────────────
+    allEdges.forEach(function(e){
+      var an=nodeById(e.a), bn=nodeById(e.b);
+      if(!an||!bn) return;
+
+      // Move dummy nodes slightly in world space
+      if(an.type==='dummy'){
+        an.x+=an.vx*0.25; an.y+=an.vy*0.25;
+        if(Math.abs(an.x)>310||Math.abs(an.y)>310){an.vx*=-1;an.vy*=-1;}
+      }
+
+      var pa=ts(an.x,an.y), pb=ts(bn.x,bn.y);
+      var isDummy = an.type==='dummy'||bn.type==='dummy';
+      var baseAlpha = isDummy ? dAlpha*0.18 : (appState==='home'?0.22:0.1);
+
+      if(DS) {
+        var flow = DS.edgeFlow[e.key]||0;
+        var isPath = DS.pathSet && DS.pathSet.has(e.key);
+        if(flow>0) {
+          if(isPath) {
+            // Shortest path: bright, glowing, thick
+            ctx.save();
+            ctx.shadowColor='#f0c060';ctx.shadowBlur=16;
+            line(pa.sx,pa.sy,pb.sx,pb.sy,'#f0c060',flow,2.5+flow*1.5,[6,4]);
+            ctx.restore();
+            if(animT%6===0 && flow>0.5) particle(pa.sx,pa.sy,pb.sx,pb.sy,'#f0c060');
+          } else {
+            // Visited but not path: dim teal
+            line(pa.sx,pa.sy,pb.sx,pb.sy,'#4aaa8a',flow*0.4,1);
+          }
+        } else {
+          line(pa.sx,pa.sy,pb.sx,pb.sy,'rgba(255,255,255,.06)',isDummy?dAlpha*0.12:0.08,0.5);
+        }
+      } else {
+        // Normal state
+        var isSub = (an.type==='sub'||bn.type==='sub');
+        var isMainHub = (!isDummy&&!isSub);
+        var a = isMainHub&&appState!=='home' ?
+          (GRAPH.main.some(function(mn){return mn.id===an.id||mn.id===bn.id;})&&
+           (an.id===appState||bn.id===appState) ? 0.55 : 0.06) : baseAlpha;
+        line(pa.sx,pa.sy,pb.sx,pb.sy,'rgba(180,210,255,1)',a,0.6);
+      }
+    });
+
+    // ── Draw ALL nodes ────────────────────────────────────────────
+    allNodes.forEach(function(n){
+      if(n.type==='hub') return; // drawn last
+
+      var p=ts(n.x,n.y);
+      var flow=DS?(DS.nodeFlow[n.id]||0):0;
+
+      if(n.type==='dummy') {
+        if(dAlpha<0.01) return;
+        var pulse=0.5+0.5*Math.sin(animT*0.03+n.phase);
+        var dr=n.r*cam.z;
+        ctx.save();
+        ctx.globalAlpha=dAlpha*(n.alpha*0.55+0.2*pulse);
+        if(DS&&flow>0){
+          ctx.shadowColor=DS.pathSet&&DS.pathSet.has('dummy')?'#f0c060':'#4aaa8a';
+          ctx.shadowBlur=8*flow;
+          ctx.globalAlpha=Math.min(1,dAlpha*(n.alpha+flow*0.5));
+        }
+        circle(p.sx,p.sy,dr,'#1a2035','rgba(120,170,220,0.55)',0.8);
+        ctx.restore();
+
+        if(DS&&flow>0) {
+          // bright settled glow
+          ctx.save();ctx.globalAlpha=flow*dAlpha*0.9;
+          ctx.shadowColor='#4aaa8a';ctx.shadowBlur=12;
+          circle(p.sx,p.sy,dr*1.1,'#2a5a4a');
+          ctx.restore();
+        }
+        return;
+      }
+
+      if(n.type==='main') {
+        var active=appState===n.id;
+        var fade=appState!=='home'&&!active;
+        var mhov=hovId===n.id;
+        var mr=n.r*cam.z*(hovS[n.id]||1);
+        var wy=wob(n.id);
+        var sx=p.sx, sy=p.sy+wy;
+        var globalA=DS?(fade?0.3:1):(fade?0.1:1);
+
+        ctx.save();ctx.globalAlpha=globalA;
+        if(DS&&flow>0){
+          ctx.shadowColor=DS.pathSet&&DS.pathSet.has([n.id,'hub'].sort().join('|'))||
+            DS.shortestPath.indexOf(n.id)>=0?'#f0c060':n.glow;
+          ctx.shadowBlur=20*flow;
+        } else if(mhov||active){
+          ctx.shadowColor=n.glow;ctx.shadowBlur=active?28:14;
+        }
+        if(active){
+          var pls=0.5+0.5*Math.sin(animT*0.06);
+          ring(sx,sy,mr+6+4*pls,n.glow,1,0.15+0.1*pls);
+        }
+        glowCircle(sx,sy,mr,active?n.color:(mhov?n.color+'dd':'#151a28'),
+          (mhov||active||flow>0.3)?n.glow:null,mr*2.5);
+        circle(sx,sy,mr,null,n.color+(active?'ff':flow>0.5?'ff':'bb'),active?2:1.5);
+        ctx.restore();
+
+        if(!fade||active){
+          var fs=Math.min(Math.max(9,mr*0.31),mr*0.29);
+          ctx.save();ctx.globalAlpha=DS&&!DS.shortestPath.includes(n.id)&&flow<0.3?0.3:globalA;
+          label(sx,sy,n.label,fs,active||mhov||flow>0.5?'#fff':'rgba(255,255,255,.82)','500');
+          ctx.restore();
+        }
+        return;
+      }
+
+      if(n.type==='sub') {
+        var mn2=nodeById(n.parentId);
+        if(!mn2) return;
+        var mp=mainProg[n.parentId]||0;
+        if(mp<0.01) return;
+        var mp2=ts(mn2.x,mn2.y);
+        var ssx=mp2.sx+(p.sx-mp2.sx)*mp, ssy=mp2.sy+(p.sy-mp2.sy)*mp;
+        var shov=hovId===n.id;
+        var sr=n.r*cam.z*(hovS[n.id]||1);
+        ctx.save();ctx.globalAlpha=Math.min(1,mp*1.4);
+        if(shov){ctx.shadowColor=n.glow;ctx.shadowBlur=14;}
+        glowCircle(ssx,ssy,sr,shov?n.color:'#151a28',shov?n.glow:null,sr*2.2);
+        circle(ssx,ssy,sr,null,n.color+'88',1);
+        ctx.restore();
+        if(mp>0.45){
+          var sfs=Math.min(Math.max(8,sr*0.37),sr*0.35);
+          ctx.save();ctx.globalAlpha=(mp-0.45)/0.55;
+          label(ssx,ssy,n.label,sfs,shov?'#fff':'rgba(255,255,255,.8)','500');
+          ctx.restore();
+        }
+      }
+    });
+
+    // ── Hub ──────────────────────────────────────────────────────
+    (function(){
+      var hub=nodeById('hub');
+      var p=ts(hub.x,hub.y);
+      var hy=wob('hub')*0.4;
+      var sx=p.sx,sy=p.sy+hy;
+      var hr=hub.r*cam.z*(hovS['hub']||1);
+      var pls=0.5+0.5*Math.sin(animT*0.03);
+      var hubFlow=DS?(DS.nodeFlow['hub']||0):0;
+      ctx.save();
+      ring(sx,sy,hr+14+6*pls,'#e8a020',0.8,0.06+0.04*pls);
+      ring(sx,sy,hr+8,'#e8a020',0.8,0.12+0.04*pls);
+      ctx.shadowColor=hubFlow>0?'#f0c060':'#e8a020';
+      ctx.shadowBlur=hovId==='hub'?30:(hubFlow>0?24:18);
+      glowCircle(sx,sy,hr,'#1a1500','#f0c060',hr*2.8);
+      circle(sx,sy,hr,null,'#e8a020',2);
+      ctx.restore();
+      var hfs=Math.min(Math.max(10,hr*0.35),hr*0.31);
+      serifLabel(sx,sy,hub.fullLabel||hub.label,hfs,'#e8a020');
+    })();
+
+    // ── Ripples & particles ──────────────────────────────────────
+    ripples=ripples.filter(function(r){return r.a>0.02;});
+    ripples.forEach(function(r){
+      ring(r.x,r.y,r.r,r.color,1.2,r.a);
+      r.r+=2.5;r.a*=0.88;
+    });
+
+    particles=particles.filter(function(p){return p.alpha>0.05;});
+    particles.forEach(function(p){
+      ctx.save();ctx.globalAlpha=p.alpha;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.color;ctx.fill();ctx.restore();
+      p.x+=p.vx;p.y+=p.vy;p.alpha*=0.93;p.r*=0.97;
+    });
+
+    // Active-edge particles (non-Dijkstra)
+    if(!DS) {
+      GRAPH.main.forEach(function(mn){
+        if(appState!==mn.id) return;
+        var hub=nodeById('hub'), m=nodeById(mn.id);
+        var ph=ts(hub.x,hub.y), pm=ts(m.x,m.y);
+        if(animT%10===0) particle(ph.sx,ph.sy,pm.sx,pm.sy,mn.glow);
+      });
+    }
+
+    // Hover springs
+    allNodes.forEach(function(n){
+      var want=hovId===n.id?1.12:1;
+      hovS[n.id]=(hovS[n.id]||1)+(want-(hovS[n.id]||1))*0.13;
+    });
+  }
+
+  // ── Hit testing ──────────────────────────────────────────────
+  function hitTest(mx,my) {
+    if(DS) return null; // ignore clicks during animation
+
+    // Sub nodes first
+    var subHit=null;
+    GRAPH.main.forEach(function(mn){
+      var mp=mainProg[mn.id]||0; if(mp<0.15) return;
+      var m=nodeById(mn.id), mp2=ts(m.x,m.y);
+      allNodes.filter(function(n){return n.parentId===mn.id&&n.type==='sub';}).forEach(function(s){
+        var p=ts(s.x,s.y);
+        var ssx=mp2.sx+(p.sx-mp2.sx)*mp, ssy=mp2.sy+(p.sy-mp2.sy)*mp;
+        if(Math.hypot(mx-ssx,my-ssy)<s.r*cam.z+6) subHit=s;
+      });
+    });
+    if(subHit) return subHit;
+
+    // Main nodes
+    for(var i=0;i<GRAPH.main.length;i++){
+      var m=nodeById(GRAPH.main[i].id), p=ts(m.x,m.y);
+      if(Math.hypot(mx-p.sx,my-p.sy)<m.r*cam.z+6) return m;
+    }
+
+    // Hub
+    var hub=nodeById('hub'), hp=ts(hub.x,hub.y);
+    if(Math.hypot(mx-hp.sx,my-hp.sy)<hub.r*cam.z+6) return hub;
+
+    return null;
+  }
+
+  // ── Camera ───────────────────────────────────────────────────
+  function setCamHome(){
+    camT={x:0,y:0,z:Math.min(W,H)/500};
+  }
+  function setCamOnMain(id){
+    var m=nodeById(id);
+    camT={x:m.x,y:m.y,z:Math.min(W,H)/270};
+  }
+
+  // ── Public API ───────────────────────────────────────────────
+  return {
+    init: function(canvasEl){
+      canvas=canvasEl; ctx=canvas.getContext('2d');
+      dpr=window.devicePixelRatio||1;
+      W=canvas.parentElement.clientWidth; H=canvas.parentElement.clientHeight;
+      canvas.width=W*dpr; canvas.height=H*dpr;
+      canvas.style.width=W+'px'; canvas.style.height=H+'px';
+      ctx.scale(dpr,dpr);
+      buildWorld();
+      setCamHome(); cam={x:camT.x,y:camT.y,z:camT.z};
+      loop();
+    },
+
+    setHome: function(){ appState='home'; DS=null; setCamHome(); },
+    setSection: function(id){ appState=id; setCamOnMain(id); },
+    clearSubState: function(){},
+    setSubState: function(){},
+
+    animateTo: function(targetId, onComplete){
+      DS=null;
+      buildEdges(); // refresh in case dummy nodes drifted
+      startDijkstra(targetId, function(id){
+        setCamOnMain(id);
+        if(onComplete) onComplete(id);
+      });
+    },
+
+    spawnRipple: function(mx,my,color){
+      ripples.push({x:mx,y:my,r:4,a:0.7,color:color||'#e8a020'});
+    },
+
+    onMouseMove: function(mx,my){
+      if(DS) return null;
+      var n=hitTest(mx,my); hovId=n?n.id:null; return n;
+    },
+    onMouseLeave: function(){ hovId=null; },
+    onClick: function(mx,my){
+      if(DS) return null;
+      return hitTest(mx,my);
+    },
+  };
+}());
+
+// ═══════════════════════════════════════════════════════════════
+//  ui.js — Right-panel rendering, YouTube thumbnails, image galleries
+// ═══════════════════════════════════════════════════════════════
+
+var UI = (function() {
+
+  let openDetId      = null;
+  let currentSection = 'home';
+
+  function q(sel){ return document.querySelector(sel); }
+
+  function scrollTo(id, delay){
+    setTimeout(()=>{
+      const el=document.getElementById(id);
+      if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+    }, delay||0);
+  }
+
+  // ── Show / hide ──────────────────────────────────────────────
+  function showHome(){
+    q('#view-home').style.display='block';
+    q('#view-section').style.display='none';
+    q('#view-section').innerHTML='';
+    q('#back-btn').classList.remove('vis');
+    q('#graph-label').classList.remove('vis');
+    openDetId=null;
+  }
+
+  function showSection(id, scrollTargetId){
+    q('#view-home').style.display='none';
+    q('#view-section').style.display='block';
+    q('#back-btn').classList.add('vis');
+    const mn=GRAPH.main.find(m=>m.id===id);
+    q('#graph-label').textContent=(mn?.label||id).replace('\n',' ');
+    q('#graph-label').classList.add('vis');
+    if(!scrollTargetId) q('#content-side').scrollTop=0;
+    renderSection(id);
+    openDetId=null;
+    if(scrollTargetId) scrollTo(scrollTargetId, 80);
+  }
+
+  // ── Home ─────────────────────────────────────────────────────
+  function renderHome(){
+    const p=PROFILE;
+    const [n1,n2]=p.name.split('\n');
+    const photoHtml=p.photo
+      ?`<img src="${p.photo}" alt="${n1}" class="h-photo" onerror="this.style.display='none'"/>`
+      :'';
+    const links=p.links.map(l=>
+      `<a class="h-link" href="${l.href}"${l.external?' target="_blank" rel="noopener"':''}>${l.label}</a>`
+    ).join('');
+    const navBtns=GRAPH.main.map(mn=>
+      `<button class="nav-btn" onclick="UI.activateSection('${mn.id}')">${mn.label.replace('\n',' ')}</button>`
+    ).join('');
+    q('#view-home').innerHTML=`
+      ${photoHtml}
+      <p class="h-eyebrow">${p.eyebrow}</p>
+      <h1 class="h-name">${n1}<br/><span>${n2||''}</span></h1>
+      <p class="h-role">${p.role}</p>
+      <p class="h-bio">${p.bio}</p>
+      <div class="h-links">${links}</div>
+      <p class="h-hint">Explore the graph — or jump to a section:</p>
+      ${navBtns}
+    `;
+  }
+
+  // ── Section router ───────────────────────────────────────────
+  function renderSection(id){
+    const sec=CONTENT[id];
+    const vs=q('#view-section');
+    if(!sec){vs.innerHTML='<p style="color:var(--muted);padding-top:2rem;font-size:.85rem">Coming soon.</p>';return;}
+    const back=`<button class="s-back" onclick="UI.goHome()">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>All sections
+    </button>`;
+    let h=`${back}
+      <p class="s-eyebrow">${sec.eyebrow}</p>
+      <h2 class="s-title">${sec.title}</h2>
+      <p class="s-sub">${sec.sub}</p>`;
+    if     (id==='research') h+=renderResearch(sec);
+    else if(id==='cv')       h+=renderCV(sec);
+    else if(id==='media')    h+=renderMedia(sec);
+    vs.innerHTML=h;
+  }
+
+  // ── Research ─────────────────────────────────────────────────
+  function renderResearch(sec){
+    return sec.subsections.map(ss=>`
+      <div class="divider"></div>
+      <p class="s-eyebrow" style="color:var(--blue)" id="rs_${ss.id}">${ss.tag}</p>
+      <p class="subsec-head">${ss.title}</p>
+      <p class="subsec-sub">${ss.sub}</p>
+      ${ss.items.map(it=>`
+        <div class="icard" id="card_${it.id}" onclick="UI.toggleDetail('${it.id}')">
+          <p class="ic-tag">${it.tag}</p>
+          <p class="ic-title">${it.title}</p>
+          <p class="ic-sub">${it.sub}</p>
+          <span class="ic-arr">›</span>
+        </div>
+        <div id="det_${it.id}" style="display:none"></div>
+      `).join('')}
+    `).join('');
+  }
+
+  // ── CV ───────────────────────────────────────────────────────
+  function renderCV(sec){
+    const facts=sec.facts.map(f=>
+      `<div class="fact-card"><p class="fk">${f.k}</p><p class="fv">${f.v.replace('\n','<br/>')}</p></div>`
+    ).join('');
+    const cvSecs=sec.cvSections.map(s=>`
+      <p class="cv-head" id="${s.anchorId||''}">${s.head}</p>
+      ${s.items.map(it=>`
+        <div class="cv-row">
+          <span class="cv-yr">${it.year||''}</span>
+          <div class="cv-d"><strong>${it.title}</strong><span>${it.sub}</span></div>
+        </div>
+      `).join('')}
+    `).join('');
+    const pdf=sec.cvPdfPath
+      ?`<hr class="divider"/><p style="font-size:.78rem;color:var(--muted)"><a href="${sec.cvPdfPath}" style="color:var(--blue)">Download full CV (PDF) →</a></p>`:'';
+    return `<div id="cv_edu"></div><div class="fact-grid">${facts}</div>${cvSecs}${pdf}`;
+  }
+
+  // ── Media ────────────────────────────────────────────────────
+  function renderMedia(sec){
+    const notes=sec.notes.map(it=>
+      `<div class="mrow"><p class="mrow-tag">Note</p><p class="mrow-title">${it.title}</p><p class="mrow-sub">${it.sub}</p></div>`
+    ).join('');
+
+    // YouTube thumbnails: extract video id and show thumbnail image
+    const videos=sec.videos.map(it=>{
+      const ytId=extractYouTubeId(it.url||'');
+      const thumb=ytId
+        ?`<a href="${it.url}" target="_blank" rel="noopener" class="yt-thumb-wrap">
+            <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" alt="${it.title}" class="yt-thumb" loading="lazy"/>
+            <span class="yt-play">▶</span>
+          </a>`
+        :'';
+      return `<div class="yt-card">
+        ${thumb}
+        <div class="yt-info">
+          <p class="mrow-tag">YouTube</p>
+          <p class="mrow-title">${it.title}</p>
+          <p class="mrow-sub">${it.sub}</p>
+          ${it.url?`<a href="${it.url}" target="_blank" rel="noopener" class="det-link" style="margin-top:.5rem;display:inline-block">Watch →</a>`:''}
+        </div>
+      </div>`;
+    }).join('');
+
+    const books=sec.books.map(it=>
+      `<div class="mrow"><p class="mrow-tag">Book</p><p class="mrow-title">${it.title}</p><p class="mrow-sub">${it.sub}</p></div>`
+    ).join('');
+
+    return `
+      <p class="cv-head" id="m_notes">Notes</p>${notes}
+      <p class="cv-head" id="m_videos">Videos worth watching</p>
+      <div class="yt-grid">${videos}</div>
+      <p class="cv-head" id="m_books">Books</p>${books}
+    `;
+  }
+
+  function extractYouTubeId(url){
+    if(!url) return null;
+    const m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m?m[1]:null;
+  }
+
+  // ── Detail expansion (Research) ──────────────────────────────
+  function getAllResearchItems(){
+    return (CONTENT.research?.subsections||[]).flatMap(s=>s.items);
+  }
+
+  // ── Scroll anchor resolution ─────────────────────────────────
+  // Sub-node id IS the anchor id for cv/media; for research use rs_ prefix
+  function anchorForSub(parentId, subId){
+    if(parentId==='research'){
+      const ss=CONTENT.research?.subsections?.find(s=>s.id===subId);
+      return ss?'rs_'+ss.id:null;
+    }
+    return subId; // cv_edu, cv_pubs, m_notes, etc.
+  }
+
+  function anchorForLeaf(grandParentId, parentId){
+    if(grandParentId==='research') return 'rs_'+parentId;
+    return parentId;
+  }
+
+  // ── Canvas event wiring ───────────────────────────────────────
+  function wireCanvas(canvasEl){
+    const tt=q('#tooltip');
+
+    canvasEl.addEventListener('mousemove',e=>{
+      const r=canvasEl.getBoundingClientRect();
+      const n=GraphEngine.onMouseMove(e.clientX-r.left,e.clientY-r.top);
+      canvasEl.style.cursor=n?'pointer':'default';
+      if(n&&n.type==='sub'){
+        tt.textContent=n.label.replace('\n',' · ');
+        tt.style.left=(e.clientX+16)+'px'; tt.style.top=(e.clientY-10)+'px';
+        tt.style.opacity='1';
+      } else tt.style.opacity='0';
+    });
+
+    canvasEl.addEventListener('mouseleave',()=>{
+      GraphEngine.onMouseLeave();
+      canvasEl.style.cursor='default';
+      tt.style.opacity='0';
+    });
+
+    canvasEl.addEventListener('click',e=>{
+      const r=canvasEl.getBoundingClientRect();
+      const mx=e.clientX-r.left, my=e.clientY-r.top;
+      const n=GraphEngine.onClick(mx,my);
+      if(!n) { UI.goHome(); return; }
+      GraphEngine.spawnRipple(mx,my,n?.glow||n?.color||'#e8a020');
+      if(n.type==='hub'){ UI.goHome(); return; }
+
+      if(n.type==='main'){
+        if(currentSection===n.id){ UI.goHome(); return; }
+        // Dijkstra animation then activate
+        GraphEngine.animateTo(n.id, (id)=>{ UI.activateSection(id); });
+        return;
+      }
+
+      if(n.type==='sub'){
+        const anchor=anchorForSub(n.parentId,n.id);
+        if(currentSection===n.parentId){
+          if(anchor) scrollTo(anchor,60);
+        } else {
+          GraphEngine.animateTo(n.parentId,(id)=>{ UI.activateSectionAt(id,anchor); });
+        }
+      }
+    });
+  }
+
+  // ── Public API ────────────────────────────────────────────────
+  return {
+    init(){
+      renderHome();
+      const canvasEl=q('#graph-canvas');
+      GraphEngine.init(canvasEl);
+      wireCanvas(canvasEl);
+      q('#back-btn').addEventListener('click',()=>UI.goHome());
+    },
+
+    goHome(){
+      currentSection='home';
+      GraphEngine.setHome();
+      showHome();
+    },
+
+    activateSection(id){
+      currentSection=id;
+      GraphEngine.setSection(id);
+      showSection(id,null);
+    },
+
+    activateSectionAt(id,anchorId){
+      currentSection=id;
+      GraphEngine.setSection(id);
+      showSection(id,anchorId);
+    },
+
+    toggleDetail(itemId){
+      const det=document.getElementById('det_'+itemId);
+      const card=document.getElementById('card_'+itemId);
+      if(!det) return;
+      if(openDetId===itemId){
+        det.style.display='none';
+        if(card) card.classList.remove('active');
+        openDetId=null; return;
+      }
+      if(openDetId){
+        const pd=document.getElementById('det_'+openDetId);
+        const pc=document.getElementById('card_'+openDetId);
+        if(pd) pd.style.display='none'; if(pc) pc.classList.remove('active');
+      }
+      openDetId=itemId;
+      if(card) card.classList.add('active');
+      const item=getAllResearchItems().find(i=>i.id===itemId);
+      if(!item?.detail) return;
+      const d=item.detail;
+
+      // Image gallery
+      const gallery=d.images?.length
+        ?`<div class="img-gallery">${d.images.map(src=>
+            `<img src="${src}" class="gallery-img" loading="lazy" onerror="this.style.display='none'"/>`
+          ).join('')}</div>`:'';
+
+      const links=d.links?.length
+        ?`<div class="det-links">${d.links.map(l=>`<a class="det-link" href="${l.href}" target="_blank">${l.label}</a>`).join('')}</div>`:'';
+
+      det.innerHTML=`<div class="detbox">
+        <p class="det-title">${item.title}</p>
+        ${d.authors?`<p class="det-authors">${d.authors}</p>`:''}
+        ${d.venue?`<p class="det-venue">${d.venue}</p>`:''}
+        <p class="det-body">${d.body}</p>
+        ${gallery}
+        ${links}
+      </div>`;
+      det.style.display='block';
+      setTimeout(()=>det.scrollIntoView({behavior:'smooth',block:'nearest'}),60);
+    },
+  };
+}());
+
+
+UI.init();
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('gallery-img')) {
+    document.getElementById('lightbox-img').src = e.target.src;
+    document.getElementById('lightbox').classList.add('open');
+  }
+});
+document.getElementById('lightbox').addEventListener('click', function() {
+  document.getElementById('lightbox').classList.remove('open');
+});
 </script>
 </body>
 </html>
