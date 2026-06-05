@@ -227,3 +227,85 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0f14; }
   padding: 5px 11px; pointer-events: none; opacity: 0; transition: opacity .1s;
   z-index: 300; white-space: nowrap; border-radius: 2px;
 }
+
+/* ── YOUTUBE CARDS ───────────────────────────────────────────── */
+.yt-grid {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  margin-bottom: .5rem;
+}
+.yt-card {
+  display: flex;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: .75rem;
+  transition: border-color .18s, background .15s;
+}
+.yt-card:hover { border-color: #aaa; background: var(--panel2); }
+.yt-thumb-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 140px;
+  height: 80px;
+  display: block;
+  overflow: hidden;
+  background: #111;
+}
+.yt-thumb {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity .2s;
+}
+.yt-thumb-wrap:hover .yt-thumb { opacity: .75; }
+.yt-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: rgba(255,255,255,.9);
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.yt-thumb-wrap:hover .yt-play { opacity: 1; }
+.yt-info { flex: 1; min-width: 0; }
+
+/* ── IMAGE GALLERY ───────────────────────────────────────────── */
+.img-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .5rem;
+  margin: .9rem 0 .5rem;
+}
+.gallery-img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  display: block;
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+  transition: opacity .15s;
+}
+.gallery-img:hover { opacity: .85; }
+
+/* Lightbox */
+#lightbox {
+  display: none;
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.88);
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+#lightbox.open { display: flex; }
+#lightbox img {
+  max-width: 90vw;
+  max-height: 88vh;
+  object-fit: contain;
+  border: 1px solid rgba(255,255,255,.1);
+}

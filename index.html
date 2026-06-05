@@ -24,11 +24,30 @@
     </div>
   </div>
 </div>
+
 <div id="tooltip"></div>
-<!-- load order: data → graph engine → ui logic → boot -->
+
+<!-- Lightbox for gallery images -->
+<div id="lightbox">
+  <img id="lightbox-img" src="" alt=""/>
+</div>
+
 <script src="assets/js/data.js"></script>
 <script src="assets/js/graph.js"></script>
 <script src="assets/js/ui.js"></script>
-<script>document.addEventListener('DOMContentLoaded', () => UI.init());</script>
+<script>
+  UI.init();
+
+  // Gallery image lightbox
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('gallery-img')) {
+      document.getElementById('lightbox-img').src = e.target.src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+  });
+  document.getElementById('lightbox').addEventListener('click', function() {
+    document.getElementById('lightbox').classList.remove('open');
+  });
+</script>
 </body>
 </html>
