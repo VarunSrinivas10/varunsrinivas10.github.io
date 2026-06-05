@@ -321,6 +321,34 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0f14; }
   border: 1px solid rgba(255,255,255,.1);
 }
 
+/* ── UPLOAD GUIDE ────────────────────────────────────────────── */
+.upload-guide {
+  margin-top: 1.4rem;
+  border: 1px solid var(--border);
+  font-family: 'Inter', sans-serif;
+}
+.upload-guide summary {
+  font-size: .75rem; font-weight: 500; letter-spacing: .04em;
+  color: var(--muted); padding: .6rem .85rem; cursor: pointer;
+  user-select: none; list-style: none;
+}
+.upload-guide summary::-webkit-details-marker { display: none; }
+.upload-guide summary::before { content: '+ '; }
+.upload-guide[open] summary::before { content: '− '; }
+.upload-guide-body {
+  border-top: 1px solid var(--border);
+  padding: .85rem 1rem;
+  display: flex; flex-direction: column; gap: .6rem;
+  background: var(--panel2);
+}
+.upload-guide-body p { font-size: .78rem; line-height: 1.65; color: var(--muted); }
+.upload-guide-body strong { font-weight: 600; color: var(--ink); }
+.upload-guide-body code {
+  font-family: 'Courier New', monospace; font-size: .75rem;
+  background: var(--panel3); padding: 1px 5px; border-radius: 2px;
+  color: var(--blue);
+}
+
 </style>
 </head>
 <body>
@@ -563,347 +591,344 @@ const CONTENT = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  graph.js — Canvas engine. Dijkstra runs through ALL nodes
-//  (real + dummy). Clicking a main node animates the shortest
-//  path from hub through the full graph, then zooms in.
+//  graph.js — Dijkstra through a real graph of 150+ nodes.
+//  Hub and main nodes are NOT directly connected — the shortest
+//  path must route through dummy nodes, making Dijkstra meaningful.
 // ═══════════════════════════════════════════════════════════════
 
 var GraphEngine = (function() {
 
-  // ── State ────────────────────────────────────────────────────
   var canvas, ctx, dpr;
-  var W = 0, H = 0, animT = 0, hovId = null;
-  var cam  = {x:0,y:0,z:1};
-  var camT = {x:0,y:0,z:1};
-  var appState = 'home';
-  var mainProg = {};
-  var hovS = {};
-  var ripples = [], particles = [];
-  var wobble = {};
+  var W=0, H=0, animT=0, hovId=null;
+  var cam={x:0,y:0,z:1}, camT={x:0,y:0,z:1};
+  var appState='home', mainProg={}, hovS={};
+  var ripples=[], particles=[], wobble={};
+  var allNodes=[], allEdges=[];
+  var DS=null; // Dijkstra animation state
 
-  // All nodes: hub + main + sub + dummy (all live in world-space coords)
-  var allNodes = [];   // {id, x, y, r, type, label?, color?, glow?, ...}
-  var allEdges = [];   // {a, b, w, key}  — full adjacency for Dijkstra
+  // ── Geometry ──────────────────────────────────────────────────
+  // Hub at (0,0). Main nodes pushed FAR out (~420px).
+  // Dummy nodes fill the middle zone (60-360px).
+  // No direct hub→main edges — path MUST go through dummies.
+  var MAIN_R   = 420;   // main node distance from hub
+  var SUB_R    = 110;   // sub nodes orbit their main node
+  var DUMMY_N  = 150;   // number of background nodes
+  var INNER_R  = 60;    // min dummy distance from hub
+  var OUTER_R  = 390;   // max dummy distance (just inside main nodes)
+  var K_NEAR   = 4;     // dummy connects to K nearest dummies
 
-  // Dijkstra animation
-  var DS = null; // null when idle
-  /*  DS = {
-        phase: 'scanning' | 'pathing' | 'zooming',
-        targetId,
-        settledOrder: [id,...],   visited nodes in Dijkstra order
-        shortestPath: [id,...],   hub→...→target
-        visitedSet: Set<id>,
-        pathSet: Set<edgeKey>,
-        edgeFlow: {},             edgeKey → 0..1 brightness
-        nodeFlow: {},             id → 0..1 brightness
-        scanIdx: 0,               which settled node to light next
-        pathIdx: 0,               which path edge to light next
-        zoomProgress: 0,
-        dummyAlpha: 1,
-        onComplete: fn
-      }
-  */
+  // ── Utility ───────────────────────────────────────────────────
+  function rng(a,b){return a+Math.random()*(b-a);}
+  function dist2(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
 
-  var MAIN_SPOKE  = 170;
-  var SUB_SPOKE   = 95;
-  var DUMMY_COUNT = 48;
-  var EDGE_CONNECT = 3; // avg edges per dummy node
+  function nodeById(id){
+    for(var i=0;i<allNodes.length;i++) if(allNodes[i].id===id) return allNodes[i];
+    return null;
+  }
 
-  // ── World setup ───────────────────────────────────────────────
-  function buildWorld() {
-    allNodes = [];
-    allEdges = [];
-    mainProg = {};
+  // ── World build ───────────────────────────────────────────────
+  function buildWorld(){
+    allNodes=[]; allEdges=[]; mainProg={};
 
     // Hub
-    allNodes.push({id:'hub', x:0, y:0, r:44, type:'hub',
-      label:GRAPH.hub.label, fullLabel:GRAPH.hub.fullLabel,
-      color:GRAPH.hub.color, glow:GRAPH.hub.glow});
+    allNodes.push({id:'hub',x:0,y:0,r:44,type:'hub',
+      label:GRAPH.hub.label,fullLabel:GRAPH.hub.fullLabel,
+      color:GRAPH.hub.color,glow:GRAPH.hub.glow});
 
-    // Main nodes + sub nodes
-    GRAPH.main.forEach(function(mn) {
-      var rad = mn.angle * Math.PI / 180;
-      var mx = Math.cos(rad)*MAIN_SPOKE, my = Math.sin(rad)*MAIN_SPOKE;
-      allNodes.push({id:mn.id, x:mx, y:my, r:38, type:'main',
-        label:mn.label, color:mn.color, glow:mn.glow, angle:mn.angle});
-      mainProg[mn.id] = 0;
+    // Main nodes — pushed far out
+    GRAPH.main.forEach(function(mn){
+      var rad=mn.angle*Math.PI/180;
+      var x=Math.cos(rad)*MAIN_R, y=Math.sin(rad)*MAIN_R;
+      allNodes.push({id:mn.id,x:x,y:y,r:42,type:'main',
+        label:mn.label,color:mn.color,glow:mn.glow,angle:mn.angle});
+      mainProg[mn.id]=0;
 
-      var subs = GRAPH.sub[mn.id] || [];
-      subs.forEach(function(s, si) {
-        var t = subs.length===1 ? 0 : (si/(subs.length-1)-0.5);
-        var a = rad + t*Math.PI*0.65;
-        var sx = mx + Math.cos(a)*SUB_SPOKE;
-        var sy = my + Math.sin(a)*SUB_SPOKE;
-        allNodes.push({id:s.id, parentId:mn.id, x:sx, y:sy, r:28, type:'sub',
-          label:s.label, color:s.color, glow:s.glow, idx:si});
-        mainProg[s.id] = 0;
+      // Sub nodes
+      var subs=GRAPH.sub[mn.id]||[];
+      subs.forEach(function(s,si){
+        var t=subs.length===1?0:(si/(subs.length-1)-0.5);
+        var a=rad+t*Math.PI*0.6;
+        var sx=x+Math.cos(a)*SUB_R, sy=y+Math.sin(a)*SUB_R;
+        allNodes.push({id:s.id,parentId:mn.id,x:sx,y:sy,r:30,type:'sub',
+          label:s.label,color:s.color,glow:s.glow,idx:si});
+        mainProg[s.id]=0;
       });
     });
 
-    // Dummy nodes — scattered in a similar world-radius to main nodes
-    var rng = function(a,b){return a+Math.random()*(b-a);};
-    for (var i=0; i<DUMMY_COUNT; i++) {
-      var angle, dist, dx, dy, tries=0;
-      do {
-        angle = rng(0, Math.PI*2);
-        dist  = rng(55, 290);
-        dx = Math.cos(angle)*dist;
-        dy = Math.sin(angle)*dist;
-        tries++;
-        // avoid placing too close to hub
-      } while (tries<40 && Math.hypot(dx,dy)<50);
-      allNodes.push({id:'d'+i, x:dx, y:dy, r:rng(5,11), type:'dummy',
-        phase:rng(0,Math.PI*2), vx:rng(-0.05,0.05), vy:rng(-0.05,0.05),
-        alpha:rng(0.3,0.6)});
+    // Dummy nodes — fill the middle zone between hub and main nodes
+    // Also scatter a few beyond main nodes for visual depth
+    var placed=0, attempts=0;
+    while(placed<DUMMY_N && attempts<DUMMY_N*20){
+      attempts++;
+      var angle=rng(0,Math.PI*2);
+      // Bias toward the middle zone where Dijkstra paths will run
+      var r = Math.random()<0.85 ? rng(INNER_R,OUTER_R) : rng(OUTER_R,OUTER_R+120);
+      var x=Math.cos(angle)*r, y=Math.sin(angle)*r;
+      // Reject if too close to a real node
+      var tooClose=false;
+      allNodes.forEach(function(n){
+        if(n.type!=='dummy'&&dist2({x:x,y:y},n)<50) tooClose=true;
+      });
+      if(!tooClose){
+        allNodes.push({id:'d'+placed,x:x,y:y,r:rng(5,13),type:'dummy',
+          phase:rng(0,Math.PI*2),vx:rng(-0.04,0.04),vy:rng(-0.04,0.04),
+          alpha:rng(0.28,0.62),color:'#3a5a8a'});
+        placed++;
+      }
     }
 
     buildEdges();
   }
 
-  function buildEdges() {
-    allEdges = [];
-    var edgeSet = {};
+  function buildEdges(){
+    allEdges=[];
+    var edgeSet={};
 
-    function addEdge(aId, bId) {
-      var key = [aId,bId].sort().join('|');
-      if (edgeSet[key]) return;
-      edgeSet[key] = true;
-      var a = nodeById(aId), b = nodeById(bId);
-      if (!a||!b) return;
-      allEdges.push({a:aId, b:bId, key:key, w:Math.hypot(a.x-b.x, a.y-b.y)});
+    function addEdge(aId,bId,w){
+      var key=[aId,bId].sort().join('|');
+      if(edgeSet[key]) return;
+      edgeSet[key]=true;
+      var a=nodeById(aId), b=nodeById(bId);
+      if(!a||!b) return;
+      var weight=w||dist2(a,b);
+      allEdges.push({a:aId,b:bId,key:key,w:weight});
     }
 
-    // Real graph edges
-    GRAPH.main.forEach(function(mn) {
-      addEdge('hub', mn.id);
-      (GRAPH.sub[mn.id]||[]).forEach(function(s) { addEdge(mn.id, s.id); });
+    // Sub nodes connect to their parent main node directly
+    GRAPH.main.forEach(function(mn){
+      (GRAPH.sub[mn.id]||[]).forEach(function(s){ addEdge(mn.id,s.id); });
     });
 
-    // Dummy-to-dummy: each dummy connects to its K nearest dummies
-    var dummies = allNodes.filter(function(n){return n.type==='dummy';});
-    dummies.forEach(function(d, i) {
-      var nearest = dummies
-        .map(function(o,j){return {j:j,id:o.id,dist:Math.hypot(d.x-o.x,d.y-o.y)};})
-        .filter(function(x){return x.id!==d.id;})
+    // NO direct hub→main edges (that's the whole point!)
+
+    // Hub connects only to nearby dummies
+    var dummies=allNodes.filter(function(n){return n.type==='dummy';});
+    var hubNeighbors=dummies
+      .map(function(d){return{id:d.id,dist:dist2({x:0,y:0},d)};})
+      .sort(function(a,b){return a.dist-b.dist;})
+      .slice(0,8); // hub touches 8 nearest dummies
+    hubNeighbors.forEach(function(nb){ addEdge('hub',nb.id); });
+
+    // Main nodes connect only to nearby dummies
+    GRAPH.main.forEach(function(mn){
+      var m=nodeById(mn.id);
+      var near=dummies
+        .map(function(d){return{id:d.id,dist:dist2(m,d)};})
         .sort(function(a,b){return a.dist-b.dist;})
-        .slice(0, EDGE_CONNECT);
-      nearest.forEach(function(nb){ addEdge(d.id, nb.id); });
+        .slice(0,8);
+      near.forEach(function(nb){ addEdge(mn.id,nb.id); });
     });
 
-    // Dummy-to-real: each dummy connects to its nearest real node if close enough
-    var realNodes = allNodes.filter(function(n){return n.type==='hub'||n.type==='main';});
-    dummies.forEach(function(d) {
-      var nearest = realNodes
-        .map(function(r){return {id:r.id, dist:Math.hypot(d.x-r.x,d.y-r.y)};})
-        .sort(function(a,b){return a.dist-b.dist;})[0];
-      if (nearest && nearest.dist < 220 && Math.random()<0.45)
-        addEdge(d.id, nearest.id);
+    // Dummy-to-dummy: K nearest neighbors — forms the routing fabric
+    dummies.forEach(function(d){
+      var near=dummies
+        .filter(function(o){return o.id!==d.id;})
+        .map(function(o){return{id:o.id,dist:dist2(d,o)};})
+        .sort(function(a,b){return a.dist-b.dist;})
+        .slice(0,K_NEAR);
+      near.forEach(function(nb){ addEdge(d.id,nb.id); });
+    });
+
+    // Verify connectivity: if hub can't reach a main node, add a bridge
+    GRAPH.main.forEach(function(mn){
+      var reachable=canReach('hub',mn.id);
+      if(!reachable){
+        // Find the closest dummy to this main node and force a connection
+        var m=nodeById(mn.id);
+        var closest=dummies
+          .map(function(d){return{id:d.id,dist:dist2(m,d)};})
+          .sort(function(a,b){return a.dist-b.dist;})[0];
+        if(closest) addEdge(mn.id,closest.id);
+      }
     });
   }
 
-  function nodeById(id) {
-    for (var i=0;i<allNodes.length;i++) if (allNodes[i].id===id) return allNodes[i];
-    return null;
-  }
-
-  // ── Dijkstra through ALL nodes ────────────────────────────────
-  function dijkstra(startId, endId) {
-    var dist = {}, prev = {}, visited = {};
-    allNodes.forEach(function(n){ dist[n.id]=Infinity; prev[n.id]=null; });
-    dist[startId] = 0;
-
-    // Build adjacency map
-    var adj = {};
-    allEdges.forEach(function(e) {
-      if (!adj[e.a]) adj[e.a]=[];
-      if (!adj[e.b]) adj[e.b]=[];
-      adj[e.a].push({to:e.b, w:e.w});
-      adj[e.b].push({to:e.a, w:e.w});
+  function canReach(startId,endId){
+    var adj={};
+    allEdges.forEach(function(e){
+      if(!adj[e.a])adj[e.a]=[];
+      if(!adj[e.b])adj[e.b]=[];
+      adj[e.a].push(e.b); adj[e.b].push(e.a);
     });
-
-    var settled = [];
-    var pq = [{id:startId,d:0}];
-
-    while (pq.length) {
-      pq.sort(function(a,b){return a.d-b.d;});
-      var cur = pq.shift();
-      if (visited[cur.id]) continue;
-      visited[cur.id] = true;
-      settled.push(cur.id);
-      if (cur.id===endId) break;
-      (adj[cur.id]||[]).forEach(function(nb) {
-        var nd = dist[cur.id]+nb.w;
-        if (nd < dist[nb.to]) {
-          dist[nb.to]=nd; prev[nb.to]=cur.id;
-          pq.push({id:nb.to,d:nd});
-        }
+    var visited={}, queue=[startId];
+    visited[startId]=true;
+    while(queue.length){
+      var cur=queue.shift();
+      if(cur===endId) return true;
+      (adj[cur]||[]).forEach(function(nb){
+        if(!visited[nb]){visited[nb]=true;queue.push(nb);}
       });
     }
-
-    var path=[], c=endId;
-    while(c){ path.unshift(c); c=prev[c]; }
-    return {path:path, settled:settled};
+    return false;
   }
 
-  // ── Start animation ───────────────────────────────────────────
-  function startDijkstra(targetId, onComplete) {
-    var result = dijkstra('hub', targetId);
-    var pathSet = new Set();
-    for (var i=0;i<result.path.length-1;i++) {
-      pathSet.add([result.path[i],result.path[i+1]].sort().join('|'));
+  // ── Dijkstra ──────────────────────────────────────────────────
+  function dijkstra(startId,endId){
+    var adj={};
+    allEdges.forEach(function(e){
+      if(!adj[e.a])adj[e.a]=[];
+      if(!adj[e.b])adj[e.b]=[];
+      adj[e.a].push({to:e.b,w:e.w});
+      adj[e.b].push({to:e.a,w:e.w});
+    });
+    var dist={},prev={},visited={};
+    allNodes.forEach(function(n){dist[n.id]=Infinity;prev[n.id]=null;});
+    dist[startId]=0;
+    var pq=[{id:startId,d:0}],settled=[];
+    while(pq.length){
+      pq.sort(function(a,b){return a.d-b.d;});
+      var cur=pq.shift();
+      if(visited[cur.id]) continue;
+      visited[cur.id]=true; settled.push(cur.id);
+      if(cur.id===endId) break;
+      (adj[cur.id]||[]).forEach(function(nb){
+        var nd=dist[cur.id]+nb.w;
+        if(nd<dist[nb.to]){dist[nb.to]=nd;prev[nb.to]=cur.id;pq.push({id:nb.to,d:nd});}
+      });
     }
-    DS = {
-      phase:        'scanning',
-      targetId:     targetId,
-      settledOrder: result.settled,
-      shortestPath: result.path,
-      pathSet:      pathSet,
-      edgeFlow:     {},
-      nodeFlow:     {},
-      scanIdx:      0,
-      pathIdx:      0,
-      zoomProgress: 0,
-      dummyAlpha:   1,
-      onComplete:   onComplete,
+    var path=[],c=endId;
+    while(c){path.unshift(c);c=prev[c];}
+    return{path:path,settled:settled};
+  }
+
+  function startDijkstra(targetId,onComplete){
+    var result=dijkstra('hub',targetId);
+    var pathKeys=new Set();
+    for(var i=0;i<result.path.length-1;i++)
+      pathKeys.add([result.path[i],result.path[i+1]].sort().join('|'));
+    DS={
+      phase:'scanning', targetId:targetId,
+      settled:result.settled, path:result.path, pathKeys:pathKeys,
+      edgeGlow:{}, nodeGlow:{},
+      scanIdx:0, pathIdx:0,
+      holdStart:null, zoomProg:0, dummyAlpha:1,
+      onComplete:onComplete,
     };
   }
 
   // ── Animation tick ────────────────────────────────────────────
-  function tickDS() {
-    if (!DS) return;
+  function tickDS(){
+    if(!DS) return;
 
-    if (DS.phase==='scanning') {
-      // Light up settled nodes one by one (fast)
-      var SETTLE_RATE = 3; // nodes per frame
-      for (var k=0;k<SETTLE_RATE;k++) {
-        if (DS.scanIdx >= DS.settledOrder.length) {
-          DS.phase='pathing'; DS.pathIdx=0; return;
-        }
-        var nid = DS.settledOrder[DS.scanIdx++];
-        DS.nodeFlow[nid] = 0; // will ramp up
+    if(DS.phase==='scanning'){
+      // Reveal settled nodes fast (5 per frame)
+      for(var k=0;k<5;k++){
+        if(DS.scanIdx>=DS.settled.length){DS.phase='pathing';DS.pathIdx=0;return;}
+        DS.nodeGlow[DS.settled[DS.scanIdx++]]=0;
       }
-      // Glow ramp for all settled nodes
-      DS.settledOrder.slice(0, DS.scanIdx).forEach(function(nid) {
-        DS.nodeFlow[nid] = Math.min(1, (DS.nodeFlow[nid]||0)+0.06);
-      });
-      // Dim non-path edges, slightly brighten visited edges
-      allEdges.forEach(function(e) {
-        var aSettled = DS.nodeFlow[e.a]>0, bSettled = DS.nodeFlow[e.b]>0;
-        if (aSettled&&bSettled) {
-          DS.edgeFlow[e.key] = Math.min(0.35, (DS.edgeFlow[e.key]||0)+0.04);
-        }
+      // Ramp glow for all settled so far
+      for(var i=0;i<DS.scanIdx;i++){
+        var nid=DS.settled[i];
+        DS.nodeGlow[nid]=Math.min(0.5,(DS.nodeGlow[nid]||0)+0.05);
+      }
+      // Dim-light edges between settled nodes
+      allEdges.forEach(function(e){
+        if(DS.nodeGlow[e.a]>0&&DS.nodeGlow[e.b]>0)
+          DS.edgeGlow[e.key]=Math.min(0.3,(DS.edgeGlow[e.key]||0)+0.04);
       });
     }
 
-    if (DS.phase==='pathing') {
-      // Flash the shortest path edges one by one (slower, dramatic)
-      if (animT % 6 === 0) {
-        if (DS.pathIdx < DS.shortestPath.length-1) {
-          var pk = [DS.shortestPath[DS.pathIdx],DS.shortestPath[DS.pathIdx+1]].sort().join('|');
-          DS.edgeFlow[pk] = 1.0; // max brightness
-          DS.nodeFlow[DS.shortestPath[DS.pathIdx]] = 1.0;
+    if(DS.phase==='pathing'){
+      // One path node/edge per 8 frames — slow and dramatic
+      if(animT%8===0){
+        if(DS.pathIdx<DS.path.length){
+          var nid=DS.path[DS.pathIdx];
+          DS.nodeGlow[nid]=1.0;
+          if(DS.pathIdx>0){
+            var pk=[DS.path[DS.pathIdx-1],nid].sort().join('|');
+            DS.edgeGlow[pk]=1.0;
+          }
           DS.pathIdx++;
         } else {
-          DS.nodeFlow[DS.targetId] = 1.0;
-          // Hold for a beat then zoom
-          if (!DS.holdStart) DS.holdStart = animT;
-          if (animT - DS.holdStart > 30) {
-            DS.phase = 'zooming';
-            if (DS.onComplete) DS.onComplete(DS.targetId);
+          if(!DS.holdStart) DS.holdStart=animT;
+          if(animT-DS.holdStart>40){
+            DS.phase='zooming';
+            if(DS.onComplete) DS.onComplete(DS.targetId);
           }
         }
       }
-      // Keep ramping all settled nodes
-      DS.settledOrder.forEach(function(nid) {
-        DS.nodeFlow[nid] = Math.min(1, (DS.nodeFlow[nid]||0)+0.04);
-      });
     }
 
-    if (DS.phase==='zooming') {
-      DS.zoomProgress = Math.min(1, DS.zoomProgress+0.03);
-      DS.dummyAlpha   = Math.max(0, 1 - DS.zoomProgress*1.8);
-      if (DS.zoomProgress>=1) DS=null;
+    if(DS.phase==='zooming'){
+      DS.zoomProg=Math.min(1,DS.zoomProg+0.025);
+      DS.dummyAlpha=Math.max(0,1-DS.zoomProg*2);
+      if(DS.zoomProg>=1) DS=null;
     }
   }
 
   // ── Draw helpers ─────────────────────────────────────────────
   function ts(wx,wy){return{sx:W/2+(wx-cam.x)*cam.z,sy:H/2+(wy-cam.y)*cam.z};}
 
-  function circle(sx,sy,r,fill,stroke,sw) {
-    ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
+  function circ(sx,sy,r,fill,stroke,sw){
+    ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
     if(fill){ctx.fillStyle=fill;ctx.fill();}
     if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=sw||1;ctx.stroke();}
   }
 
-  function glowCircle(sx,sy,r,fill,glowColor,glowR) {
-    if(glowColor){
-      var g=ctx.createRadialGradient(sx,sy,r*0.2,sx,sy,glowR);
-      g.addColorStop(0,glowColor+'66'); g.addColorStop(1,glowColor+'00');
-      ctx.beginPath();ctx.arc(sx,sy,glowR,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+  function glowCirc(sx,sy,r,fill,gc,gr){
+    if(gc){
+      var g=ctx.createRadialGradient(sx,sy,r*0.2,sx,sy,gr);
+      g.addColorStop(0,gc+'60');g.addColorStop(1,gc+'00');
+      ctx.beginPath();ctx.arc(sx,sy,gr,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
     }
-    circle(sx,sy,r,fill);
+    circ(sx,sy,r,fill);
   }
 
-  function ring(sx,sy,r,color,lw,alpha) {
+  function ring(sx,sy,r,color,lw,alpha){
     ctx.save();ctx.globalAlpha=alpha!=null?alpha:1;
     ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
     ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.stroke();
     ctx.restore();
   }
 
-  function line(ax,ay,bx,by,color,alpha,lw,dash) {
+  function ln(ax,ay,bx,by,color,alpha,lw,dash){
     ctx.save();ctx.globalAlpha=alpha!=null?alpha:1;
     ctx.beginPath();ctx.moveTo(ax,ay);
-    // gentle curve
     var mx=(ax+bx)/2,my=(ay+by)/2;
-    ctx.quadraticCurveTo(mx+(ay-by)*0.1,my+(bx-ax)*0.1,bx,by);
+    ctx.quadraticCurveTo(mx+(ay-by)*0.08,my+(bx-ax)*0.08,bx,by);
     ctx.strokeStyle=color;ctx.lineWidth=lw||1;
     if(dash){ctx.setLineDash(dash);ctx.lineDashOffset=-animT*0.015;}
     ctx.stroke();ctx.setLineDash([]);
     ctx.restore();
   }
 
-  function label(sx,sy,text,size,color,weight) {
+  function lbl(sx,sy,text,size,color,weight){
     var lines=text.split('\n');
     ctx.save();
     ctx.font=(weight||'400')+' '+size+'px \'Inter\',sans-serif';
     ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';
-    var lh=size*1.25, oy=-(lines.length-1)*lh/2;
+    var lh=size*1.25,oy=-(lines.length-1)*lh/2;
     lines.forEach(function(l,i){ctx.fillText(l,sx,sy+oy+i*lh);});
     ctx.restore();
   }
 
-  function serifLabel(sx,sy,text,size,color) {
+  function serifLbl(sx,sy,text,size,color){
     var lines=text.split('\n');
     ctx.save();
     ctx.font=size+'px \'Playfair Display\',serif';
     ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';
-    var lh=size*1.3, oy=-(lines.length-1)*lh/2;
+    var lh=size*1.3,oy=-(lines.length-1)*lh/2;
     lines.forEach(function(l,i){ctx.fillText(l,sx,sy+oy+i*lh);});
     ctx.restore();
   }
 
-  function wob(id) {
+  function getWob(id){
     if(!wobble[id]) wobble[id]=Math.random()*Math.PI*2;
-    return Math.sin(animT*0.04+wobble[id])*1.4;
+    return Math.sin(animT*0.04+wobble[id])*1.5;
   }
 
-  function particle(ax,ay,bx,by,color) {
+  function spawnParticle(ax,ay,bx,by,color){
     var t=Math.random();
-    particles.push({
-      x:ax+(bx-ax)*t,y:ay+(by-ay)*t,
-      vx:(bx-ax)*0.003*(0.5+Math.random()),
-      vy:(by-ay)*0.003*(0.5+Math.random()),
-      r:1.5+Math.random()*1.5, color:color, alpha:0.8
-    });
+    particles.push({x:ax+(bx-ax)*t,y:ay+(by-ay)*t,
+      vx:(bx-ax)*0.004*(0.4+Math.random()),vy:(by-ay)*0.004*(0.4+Math.random()),
+      r:1.5+Math.random()*2,color:color,alpha:0.85});
   }
 
-  // ── Main loop ─────────────────────────────────────────────────
-  function loop() {
+  // ── Main render loop ─────────────────────────────────────────
+  function loop(){
     requestAnimationFrame(loop);
     animT++;
-
-    var pw=canvas.parentElement.clientWidth, ph=canvas.parentElement.clientHeight;
+    var pw=canvas.parentElement.clientWidth,ph=canvas.parentElement.clientHeight;
     if(W!==pw||H!==ph){
       W=pw;H=ph;
       canvas.width=W*dpr;canvas.height=H*dpr;
@@ -911,12 +936,10 @@ var GraphEngine = (function() {
       ctx.scale(dpr,dpr);
       if(allNodes.length===0) buildWorld();
     }
-
     cam.x+=(camT.x-cam.x)*0.07;
     cam.y+=(camT.y-cam.y)*0.07;
     cam.z+=(camT.z-cam.z)*0.07;
 
-    // Sub-node expand progress
     GRAPH.main.forEach(function(mn){
       var want=appState===mn.id?1:0;
       mainProg[mn.id]=(mainProg[mn.id]||0)+(want-mainProg[mn.id])*0.09;
@@ -928,292 +951,268 @@ var GraphEngine = (function() {
     tickDS();
     ctx.clearRect(0,0,W,H);
 
-    // ── Background ──
+    // Starfield
     ctx.save();
-    for(var i=0;i<60;i++){
-      var px=((i*73.1)%W+W)%W, py=((i*53.7)%H+H)%H;
-      var pa=0.1+0.07*Math.sin(animT*0.02+i);
-      ctx.beginPath();ctx.arc(px,py,0.7+((i*31)%10)*0.12,0,Math.PI*2);
-      ctx.fillStyle='hsla('+((i*137.5)%360)+',35%,70%,'+pa+')';ctx.fill();
+    for(var i=0;i<80;i++){
+      var px=((i*73.1)%W+W)%W,py=((i*53.7)%H+H)%H;
+      var pa=0.08+0.06*Math.sin(animT*0.02+i);
+      ctx.beginPath();ctx.arc(px,py,0.6+((i*31)%10)*0.1,0,Math.PI*2);
+      ctx.fillStyle='hsla('+((i*137.5)%360)+',30%,75%,'+pa+')';ctx.fill();
     }
     ctx.restore();
 
-    // Animated grid
-    ctx.save();ctx.strokeStyle='rgba(255,255,255,.02)';ctx.lineWidth=0.5;
+    // Grid
+    ctx.save();ctx.strokeStyle='rgba(255,255,255,.018)';ctx.lineWidth=0.5;
     var gs=60*cam.z;
-    var ox=((W/2-cam.x*cam.z)%gs+gs)%gs, oy=((H/2-cam.y*cam.z)%gs+gs)%gs;
+    var ox=((W/2-cam.x*cam.z)%gs+gs)%gs,oy=((H/2-cam.y*cam.z)%gs+gs)%gs;
     for(var x=ox-gs;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     for(var y=oy-gs;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
     ctx.restore();
 
-    var dAlpha = DS ? DS.dummyAlpha : (appState==='home'?1:0.15);
+    var dAlpha=DS?DS.dummyAlpha:(appState==='home'?1:0.15);
 
-    // ── Draw ALL edges ────────────────────────────────────────────
+    // ── Drift dummies ─────────────────────────────────────────
+    allNodes.forEach(function(n){
+      if(n.type!=='dummy') return;
+      n.x+=n.vx*0.2; n.y+=n.vy*0.2;
+      var r2=Math.hypot(n.x,n.y);
+      if(r2>OUTER_R+130||r2<INNER_R-20){n.vx*=-1;n.vy*=-1;}
+    });
+
+    // ── Draw ALL edges ────────────────────────────────────────
     allEdges.forEach(function(e){
-      var an=nodeById(e.a), bn=nodeById(e.b);
+      var an=nodeById(e.a),bn=nodeById(e.b);
       if(!an||!bn) return;
+      var pa=ts(an.x,an.y),pb=ts(bn.x,bn.y);
+      var isDummy=an.type==='dummy'||bn.type==='dummy';
 
-      // Move dummy nodes slightly in world space
-      if(an.type==='dummy'){
-        an.x+=an.vx*0.25; an.y+=an.vy*0.25;
-        if(Math.abs(an.x)>310||Math.abs(an.y)>310){an.vx*=-1;an.vy*=-1;}
-      }
-
-      var pa=ts(an.x,an.y), pb=ts(bn.x,bn.y);
-      var isDummy = an.type==='dummy'||bn.type==='dummy';
-      var baseAlpha = isDummy ? dAlpha*0.18 : (appState==='home'?0.22:0.1);
-
-      if(DS) {
-        var flow = DS.edgeFlow[e.key]||0;
-        var isPath = DS.pathSet && DS.pathSet.has(e.key);
-        if(flow>0) {
-          if(isPath) {
-            // Shortest path: bright, glowing, thick
-            ctx.save();
-            ctx.shadowColor='#f0c060';ctx.shadowBlur=16;
-            line(pa.sx,pa.sy,pb.sx,pb.sy,'#f0c060',flow,2.5+flow*1.5,[6,4]);
-            ctx.restore();
-            if(animT%6===0 && flow>0.5) particle(pa.sx,pa.sy,pb.sx,pb.sy,'#f0c060');
-          } else {
-            // Visited but not path: dim teal
-            line(pa.sx,pa.sy,pb.sx,pb.sy,'#4aaa8a',flow*0.4,1);
-          }
+      if(DS){
+        var glow=DS.edgeGlow[e.key]||0;
+        var isPath=DS.pathKeys.has(e.key);
+        if(isPath&&glow>0){
+          // Shortest path: gold, glowing, thick
+          ctx.save();ctx.shadowColor='#f0c060';ctx.shadowBlur=18;
+          ln(pa.sx,pa.sy,pb.sx,pb.sy,'#f0c060',glow,3+glow*2,[7,4]);
+          ctx.restore();
+          if(animT%5===0&&glow>0.7) spawnParticle(pa.sx,pa.sy,pb.sx,pb.sy,'#f0c060');
+        } else if(glow>0){
+          // Visited, not shortest path: dim teal
+          ln(pa.sx,pa.sy,pb.sx,pb.sy,'#3a9a7a',glow*0.5,0.8);
         } else {
-          line(pa.sx,pa.sy,pb.sx,pb.sy,'rgba(255,255,255,.06)',isDummy?dAlpha*0.12:0.08,0.5);
+          // Unvisited
+          ln(pa.sx,pa.sy,pb.sx,pb.sy,'rgba(255,255,255,.05)',isDummy?dAlpha*0.1:0.07,0.5);
         }
       } else {
         // Normal state
-        var isSub = (an.type==='sub'||bn.type==='sub');
-        var isMainHub = (!isDummy&&!isSub);
-        var a = isMainHub&&appState!=='home' ?
-          (GRAPH.main.some(function(mn){return mn.id===an.id||mn.id===bn.id;})&&
-           (an.id===appState||bn.id===appState) ? 0.55 : 0.06) : baseAlpha;
-        line(pa.sx,pa.sy,pb.sx,pb.sy,'rgba(180,210,255,1)',a,0.6);
+        var baseA=isDummy?dAlpha*0.16:0.2;
+        if(appState!=='home'&&!isDummy){
+          var aMain=GRAPH.main.some(function(mn){return mn.id===an.id||mn.id===bn.id;});
+          baseA=aMain?0.06:0.1;
+        }
+        ln(pa.sx,pa.sy,pb.sx,pb.sy,'rgba(150,190,255,1)',baseA,0.6);
       }
     });
 
-    // ── Draw ALL nodes ────────────────────────────────────────────
-    allNodes.forEach(function(n){
-      if(n.type==='hub') return; // drawn last
-
-      var p=ts(n.x,n.y);
-      var flow=DS?(DS.nodeFlow[n.id]||0):0;
-
-      if(n.type==='dummy') {
-        if(dAlpha<0.01) return;
-        var pulse=0.5+0.5*Math.sin(animT*0.03+n.phase);
+    // ── Draw dummy nodes ──────────────────────────────────────
+    if(dAlpha>0.01){
+      allNodes.forEach(function(n){
+        if(n.type!=='dummy') return;
+        var p=ts(n.x,n.y);
         var dr=n.r*cam.z;
+        var pulse=0.5+0.5*Math.sin(animT*0.025+n.phase);
+        var glow=DS?(DS.nodeGlow[n.id]||0):0;
+        var isOnPath=DS&&DS.path&&DS.path.indexOf(n.id)>=0;
+
         ctx.save();
-        ctx.globalAlpha=dAlpha*(n.alpha*0.55+0.2*pulse);
-        if(DS&&flow>0){
-          ctx.shadowColor=DS.pathSet&&DS.pathSet.has('dummy')?'#f0c060':'#4aaa8a';
-          ctx.shadowBlur=8*flow;
-          ctx.globalAlpha=Math.min(1,dAlpha*(n.alpha+flow*0.5));
+        ctx.globalAlpha=dAlpha*(n.alpha*0.55+0.18*pulse);
+        if(glow>0){
+          ctx.shadowColor=isOnPath?'#f0c060':'#3a9a7a';
+          ctx.shadowBlur=isOnPath?14*glow:8*glow;
+          ctx.globalAlpha=Math.min(1,dAlpha*(n.alpha+glow*0.8));
+          circ(p.sx,p.sy,dr*(1+glow*0.3),isOnPath?'#c09020':'#2a7a5a');
+        } else {
+          circ(p.sx,p.sy,dr,'#1a2035','rgba(100,150,220,0.5)',0.8);
         }
-        circle(p.sx,p.sy,dr,'#1a2035','rgba(120,170,220,0.55)',0.8);
         ctx.restore();
+      });
+    }
 
-        if(DS&&flow>0) {
-          // bright settled glow
-          ctx.save();ctx.globalAlpha=flow*dAlpha*0.9;
-          ctx.shadowColor='#4aaa8a';ctx.shadowBlur=12;
-          circle(p.sx,p.sy,dr*1.1,'#2a5a4a');
-          ctx.restore();
-        }
-        return;
-      }
-
-      if(n.type==='main') {
-        var active=appState===n.id;
-        var fade=appState!=='home'&&!active;
-        var mhov=hovId===n.id;
-        var mr=n.r*cam.z*(hovS[n.id]||1);
-        var wy=wob(n.id);
-        var sx=p.sx, sy=p.sy+wy;
-        var globalA=DS?(fade?0.3:1):(fade?0.1:1);
-
-        ctx.save();ctx.globalAlpha=globalA;
-        if(DS&&flow>0){
-          ctx.shadowColor=DS.pathSet&&DS.pathSet.has([n.id,'hub'].sort().join('|'))||
-            DS.shortestPath.indexOf(n.id)>=0?'#f0c060':n.glow;
-          ctx.shadowBlur=20*flow;
-        } else if(mhov||active){
-          ctx.shadowColor=n.glow;ctx.shadowBlur=active?28:14;
-        }
-        if(active){
-          var pls=0.5+0.5*Math.sin(animT*0.06);
-          ring(sx,sy,mr+6+4*pls,n.glow,1,0.15+0.1*pls);
-        }
-        glowCircle(sx,sy,mr,active?n.color:(mhov?n.color+'dd':'#151a28'),
-          (mhov||active||flow>0.3)?n.glow:null,mr*2.5);
-        circle(sx,sy,mr,null,n.color+(active?'ff':flow>0.5?'ff':'bb'),active?2:1.5);
-        ctx.restore();
-
-        if(!fade||active){
-          var fs=Math.min(Math.max(9,mr*0.31),mr*0.29);
-          ctx.save();ctx.globalAlpha=DS&&!DS.shortestPath.includes(n.id)&&flow<0.3?0.3:globalA;
-          label(sx,sy,n.label,fs,active||mhov||flow>0.5?'#fff':'rgba(255,255,255,.82)','500');
-          ctx.restore();
-        }
-        return;
-      }
-
-      if(n.type==='sub') {
-        var mn2=nodeById(n.parentId);
-        if(!mn2) return;
-        var mp=mainProg[n.parentId]||0;
-        if(mp<0.01) return;
-        var mp2=ts(mn2.x,mn2.y);
-        var ssx=mp2.sx+(p.sx-mp2.sx)*mp, ssy=mp2.sy+(p.sy-mp2.sy)*mp;
-        var shov=hovId===n.id;
-        var sr=n.r*cam.z*(hovS[n.id]||1);
+    // ── Draw sub nodes ────────────────────────────────────────
+    GRAPH.main.forEach(function(mn){
+      var mp=mainProg[mn.id]||0; if(mp<0.01) return;
+      var m=nodeById(mn.id), mp2=ts(m.x,m.y);
+      allNodes.filter(function(n){return n.parentId===mn.id;}).forEach(function(s){
+        var p=ts(s.x,s.y);
+        var ssx=mp2.sx+(p.sx-mp2.sx)*mp,ssy=mp2.sy+(p.sy-mp2.sy)*mp;
+        var shov=hovId===s.id;
+        var sr=s.r*cam.z*(hovS[s.id]||1);
         ctx.save();ctx.globalAlpha=Math.min(1,mp*1.4);
-        if(shov){ctx.shadowColor=n.glow;ctx.shadowBlur=14;}
-        glowCircle(ssx,ssy,sr,shov?n.color:'#151a28',shov?n.glow:null,sr*2.2);
-        circle(ssx,ssy,sr,null,n.color+'88',1);
+        if(shov){ctx.shadowColor=s.glow;ctx.shadowBlur=14;}
+        glowCirc(ssx,ssy,sr,shov?s.color:'#151a28',shov?s.glow:null,sr*2.2);
+        circ(ssx,ssy,sr,null,s.color+'88',1);
         ctx.restore();
         if(mp>0.45){
-          var sfs=Math.min(Math.max(8,sr*0.37),sr*0.35);
+          var sfs=Math.min(Math.max(8,sr*0.36),sr*0.34);
           ctx.save();ctx.globalAlpha=(mp-0.45)/0.55;
-          label(ssx,ssy,n.label,sfs,shov?'#fff':'rgba(255,255,255,.8)','500');
+          lbl(ssx,ssy,s.label,sfs,shov?'#fff':'rgba(255,255,255,.82)','500');
           ctx.restore();
         }
+      });
+    });
+
+    // ── Draw main nodes ───────────────────────────────────────
+    GRAPH.main.forEach(function(mn){
+      var m=nodeById(mn.id);
+      var active=appState===mn.id;
+      var fade=appState!=='home'&&!active;
+      var mhov=hovId===mn.id;
+      var mr=m.r*cam.z*(hovS[mn.id]||1);
+      var wy=getWob(mn.id);
+      var p=ts(m.x,m.y);
+      var sx=p.sx,sy=p.sy+wy;
+      var dsGlow=DS?(DS.nodeGlow[mn.id]||0):0;
+      var onPath=DS&&DS.path&&DS.path.indexOf(mn.id)>=0;
+
+      ctx.save();ctx.globalAlpha=DS?(fade?0.25:1):(fade?0.08:1);
+      if(onPath&&dsGlow>0){
+        ctx.shadowColor='#f0c060';ctx.shadowBlur=28*dsGlow;
+      } else if(mhov||active){
+        ctx.shadowColor=mn.glow;ctx.shadowBlur=active?28:14;
+      }
+      if(active){
+        var pls=0.5+0.5*Math.sin(animT*0.06);
+        ring(sx,sy,mr+7+5*pls,mn.glow,1.2,0.18+0.1*pls);
+      }
+      glowCirc(sx,sy,mr,active?mn.color:(mhov?mn.color+'dd':'#151a28'),
+        (mhov||active||dsGlow>0.4)?mn.glow:null,mr*2.5);
+      circ(sx,sy,mr,null,
+        onPath&&dsGlow>0.5?'#f0c060':(mn.color+(active?'ff':'cc')),
+        active?2.5:1.8);
+      ctx.restore();
+
+      if(!fade||active){
+        var fs=Math.min(Math.max(9,mr*0.28),mr*0.26);
+        ctx.save();ctx.globalAlpha=DS&&!onPath&&dsGlow<0.3?0.25:(fade?0.08:1);
+        lbl(sx,sy,mn.label,fs,active||mhov||dsGlow>0.6?'#fff':'rgba(255,255,255,.85)','500');
+        ctx.restore();
       }
     });
 
-    // ── Hub ──────────────────────────────────────────────────────
+    // ── Hub ───────────────────────────────────────────────────
     (function(){
       var hub=nodeById('hub');
       var p=ts(hub.x,hub.y);
-      var hy=wob('hub')*0.4;
-      var sx=p.sx,sy=p.sy+hy;
+      var wy=getWob('hub')*0.5;
+      var sx=p.sx,sy=p.sy+wy;
       var hr=hub.r*cam.z*(hovS['hub']||1);
       var pls=0.5+0.5*Math.sin(animT*0.03);
-      var hubFlow=DS?(DS.nodeFlow['hub']||0):0;
+      var hg=DS?(DS.nodeGlow['hub']||0):0;
       ctx.save();
-      ring(sx,sy,hr+14+6*pls,'#e8a020',0.8,0.06+0.04*pls);
-      ring(sx,sy,hr+8,'#e8a020',0.8,0.12+0.04*pls);
-      ctx.shadowColor=hubFlow>0?'#f0c060':'#e8a020';
-      ctx.shadowBlur=hovId==='hub'?30:(hubFlow>0?24:18);
-      glowCircle(sx,sy,hr,'#1a1500','#f0c060',hr*2.8);
-      circle(sx,sy,hr,null,'#e8a020',2);
+      ring(sx,sy,hr+16+7*pls,'#e8a020',0.8,0.05+0.04*pls);
+      ring(sx,sy,hr+9,'#e8a020',0.8,0.11+0.04*pls);
+      ctx.shadowColor=hg>0?'#f0c060':'#e8a020';
+      ctx.shadowBlur=hovId==='hub'?32:(hg>0?28:20);
+      glowCirc(sx,sy,hr,'#1a1500','#f0c060',hr*3);
+      circ(sx,sy,hr,null,hg>0?'#f0c060':'#e8a020',2.5);
       ctx.restore();
-      var hfs=Math.min(Math.max(10,hr*0.35),hr*0.31);
-      serifLabel(sx,sy,hub.fullLabel||hub.label,hfs,'#e8a020');
+      var hfs=Math.min(Math.max(10,hr*0.33),hr*0.30);
+      serifLbl(sx,sy,hub.fullLabel||hub.label,hfs,'#e8a020');
     })();
 
-    // ── Ripples & particles ──────────────────────────────────────
+    // Ripples
     ripples=ripples.filter(function(r){return r.a>0.02;});
     ripples.forEach(function(r){
-      ring(r.x,r.y,r.r,r.color,1.2,r.a);
-      r.r+=2.5;r.a*=0.88;
+      ring(r.x,r.y,r.r,r.color,1.2,r.a);r.r+=2.5;r.a*=0.88;
     });
 
+    // Particles
     particles=particles.filter(function(p){return p.alpha>0.05;});
     particles.forEach(function(p){
       ctx.save();ctx.globalAlpha=p.alpha;
       ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
       ctx.fillStyle=p.color;ctx.fill();ctx.restore();
-      p.x+=p.vx;p.y+=p.vy;p.alpha*=0.93;p.r*=0.97;
+      p.x+=p.vx;p.y+=p.vy;p.alpha*=0.93;p.r*=0.96;
     });
 
-    // Active-edge particles (non-Dijkstra)
-    if(!DS) {
+    // Active edge particles (non-DS)
+    if(!DS&&appState!=='home'){
       GRAPH.main.forEach(function(mn){
         if(appState!==mn.id) return;
-        var hub=nodeById('hub'), m=nodeById(mn.id);
-        var ph=ts(hub.x,hub.y), pm=ts(m.x,m.y);
-        if(animT%10===0) particle(ph.sx,ph.sy,pm.sx,pm.sy,mn.glow);
+        // spark along path edges
+        if(animT%8===0){
+          var m=nodeById(mn.id);
+          var pm=ts(m.x,m.y),ph=ts(0,0);
+          spawnParticle(ph.sx,ph.sy,pm.sx,pm.sy,mn.glow);
+        }
       });
     }
 
     // Hover springs
     allNodes.forEach(function(n){
-      var want=hovId===n.id?1.12:1;
+      var want=hovId===n.id?1.13:1;
       hovS[n.id]=(hovS[n.id]||1)+(want-(hovS[n.id]||1))*0.13;
     });
   }
 
-  // ── Hit testing ──────────────────────────────────────────────
-  function hitTest(mx,my) {
-    if(DS) return null; // ignore clicks during animation
-
-    // Sub nodes first
-    var subHit=null;
+  // ── Hit testing ───────────────────────────────────────────────
+  function hitTest(mx,my){
+    if(DS) return null;
+    // Sub nodes
+    var hit=null;
     GRAPH.main.forEach(function(mn){
-      var mp=mainProg[mn.id]||0; if(mp<0.15) return;
-      var m=nodeById(mn.id), mp2=ts(m.x,m.y);
-      allNodes.filter(function(n){return n.parentId===mn.id&&n.type==='sub';}).forEach(function(s){
+      var mp=mainProg[mn.id]||0;if(mp<0.15)return;
+      var m=nodeById(mn.id),mp2=ts(m.x,m.y);
+      allNodes.filter(function(n){return n.parentId===mn.id;}).forEach(function(s){
         var p=ts(s.x,s.y);
-        var ssx=mp2.sx+(p.sx-mp2.sx)*mp, ssy=mp2.sy+(p.sy-mp2.sy)*mp;
-        if(Math.hypot(mx-ssx,my-ssy)<s.r*cam.z+6) subHit=s;
+        var ssx=mp2.sx+(p.sx-mp2.sx)*mp,ssy=mp2.sy+(p.sy-mp2.sy)*mp;
+        if(Math.hypot(mx-ssx,my-ssy)<s.r*cam.z+6)hit=s;
       });
     });
-    if(subHit) return subHit;
-
+    if(hit) return hit;
     // Main nodes
     for(var i=0;i<GRAPH.main.length;i++){
-      var m=nodeById(GRAPH.main[i].id), p=ts(m.x,m.y);
-      if(Math.hypot(mx-p.sx,my-p.sy)<m.r*cam.z+6) return m;
+      var m=nodeById(GRAPH.main[i].id),p=ts(m.x,m.y);
+      if(Math.hypot(mx-p.sx,my-p.sy)<m.r*cam.z+8)return m;
     }
-
     // Hub
-    var hub=nodeById('hub'), hp=ts(hub.x,hub.y);
-    if(Math.hypot(mx-hp.sx,my-hp.sy)<hub.r*cam.z+6) return hub;
-
+    var hub=nodeById('hub'),hp=ts(hub.x,hub.y);
+    if(Math.hypot(mx-hp.sx,my-hp.sy)<hub.r*cam.z+8)return hub;
     return null;
   }
 
-  // ── Camera ───────────────────────────────────────────────────
-  function setCamHome(){
-    camT={x:0,y:0,z:Math.min(W,H)/500};
-  }
+  // ── Camera ────────────────────────────────────────────────────
+  function setCamHome(){camT={x:0,y:0,z:Math.min(W,H)/900};}
   function setCamOnMain(id){
     var m=nodeById(id);
-    camT={x:m.x,y:m.y,z:Math.min(W,H)/270};
+    camT={x:m.x,y:m.y,z:Math.min(W,H)/320};
   }
 
-  // ── Public API ───────────────────────────────────────────────
+  // ── Public API ────────────────────────────────────────────────
   return {
-    init: function(canvasEl){
-      canvas=canvasEl; ctx=canvas.getContext('2d');
+    init:function(canvasEl){
+      canvas=canvasEl;ctx=canvas.getContext('2d');
       dpr=window.devicePixelRatio||1;
-      W=canvas.parentElement.clientWidth; H=canvas.parentElement.clientHeight;
-      canvas.width=W*dpr; canvas.height=H*dpr;
-      canvas.style.width=W+'px'; canvas.style.height=H+'px';
+      W=canvas.parentElement.clientWidth;H=canvas.parentElement.clientHeight;
+      canvas.width=W*dpr;canvas.height=H*dpr;
+      canvas.style.width=W+'px';canvas.style.height=H+'px';
       ctx.scale(dpr,dpr);
-      buildWorld();
-      setCamHome(); cam={x:camT.x,y:camT.y,z:camT.z};
+      buildWorld();setCamHome();cam={x:camT.x,y:camT.y,z:camT.z};
       loop();
     },
-
-    setHome: function(){ appState='home'; DS=null; setCamHome(); },
-    setSection: function(id){ appState=id; setCamOnMain(id); },
-    clearSubState: function(){},
-    setSubState: function(){},
-
-    animateTo: function(targetId, onComplete){
+    setHome:function(){appState='home';DS=null;setCamHome();},
+    setSection:function(id){appState=id;setCamOnMain(id);},
+    clearSubState:function(){},setSubState:function(){},
+    animateTo:function(targetId,onComplete){
       DS=null;
-      buildEdges(); // refresh in case dummy nodes drifted
-      startDijkstra(targetId, function(id){
+      startDijkstra(targetId,function(id){
         setCamOnMain(id);
-        if(onComplete) onComplete(id);
+        if(onComplete)onComplete(id);
       });
     },
-
-    spawnRipple: function(mx,my,color){
-      ripples.push({x:mx,y:my,r:4,a:0.7,color:color||'#e8a020'});
-    },
-
-    onMouseMove: function(mx,my){
-      if(DS) return null;
-      var n=hitTest(mx,my); hovId=n?n.id:null; return n;
-    },
-    onMouseLeave: function(){ hovId=null; },
-    onClick: function(mx,my){
-      if(DS) return null;
-      return hitTest(mx,my);
-    },
+    spawnRipple:function(mx,my,color){ripples.push({x:mx,y:my,r:4,a:0.7,color:color||'#e8a020'});},
+    onMouseMove:function(mx,my){if(DS)return null;var n=hitTest(mx,my);hovId=n?n.id:null;return n;},
+    onMouseLeave:function(){hovId=null;},
+    onClick:function(mx,my){if(DS)return null;return hitTest(mx,my);},
   };
 }());
 
@@ -1279,6 +1278,14 @@ var UI = (function() {
       <p class="h-bio">${p.bio}</p>
       <div class="h-links">${links}</div>
       <p class="h-hint">Explore the graph — or jump to a section:</p>
+      <details class="upload-guide">
+        <summary>How to add your photo &amp; images</summary>
+        <div class="upload-guide-body">
+          <p><strong>Profile photo:</strong> Upload a file named <code>profile.jpg</code> to <code>assets/img/</code> in your GitHub repo. It will appear automatically.</p>
+          <p><strong>Research images:</strong> Upload any image to <code>assets/img/</code>, then add the path to the <code>images</code> array in <code>data.js</code> under the relevant research item. Example: <code>images: ['assets/img/gnn_fig.png']</code></p>
+          <p><strong>YouTube videos:</strong> Add the full YouTube URL to the <code>url</code> field of a video entry in <code>data.js</code>. The thumbnail appears automatically.</p>
+        </div>
+      </details>
       ${navBtns}
     `;
   }
