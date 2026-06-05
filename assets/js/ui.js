@@ -6,38 +6,57 @@
 
 const UI = (() => {
 
-  let openDetId = null;
+  let openDetId      = null;
+  let currentSection = 'home';
+  let currentSub     = null;
 
-  // ── Helpers ──────────────────────────────────────────────────
+  // ── Tiny helpers ─────────────────────────────────────────────
   function q(sel) { return document.querySelector(sel); }
 
+  function scrollTo(id, delay) {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, delay || 0);
+  }
+
+  // ── Show / hide views ────────────────────────────────────────
   function showHome() {
-    q('#view-home').style.display = 'block';
+    q('#view-home').style.display    = 'block';
     q('#view-section').style.display = 'none';
-    q('#view-section').innerHTML = '';
+    q('#view-section').innerHTML     = '';
     q('#back-btn').classList.remove('vis');
     q('#graph-label').classList.remove('vis');
     openDetId = null;
   }
 
-  function showSection(id) {
-    q('#view-home').style.display = 'none';
+  // Render a section. If scrollTargetId is provided, scroll there
+  // after render instead of resetting to top.
+  function showSection(id, scrollTargetId) {
+    q('#view-home').style.display    = 'none';
     q('#view-section').style.display = 'block';
-    q('#content-side').scrollTop = 0;
     q('#back-btn').classList.add('vis');
     const mn = GRAPH.main.find(m => m.id === id);
     q('#graph-label').textContent = (mn?.label || id).replace('\n', ' ');
     q('#graph-label').classList.add('vis');
+
+    // Only reset scroll when navigating to a fresh section top-level
+    if (!scrollTargetId) q('#content-side').scrollTop = 0;
+
     renderSection(id);
     openDetId = null;
+
+    if (scrollTargetId) scrollTo(scrollTargetId, 80);
   }
 
-  // ── Home view ────────────────────────────────────────────────
+  // ── Home ─────────────────────────────────────────────────────
   function renderHome() {
     const p = PROFILE;
-    const nameLines = p.name.split('\n');
-    const namePart1 = nameLines[0];
-    const namePart2 = nameLines[1] || '';
+    const [n1, n2] = p.name.split('\n');
+
+    const photoHtml = p.photo
+      ? `<img src="${p.photo}" alt="${n1} ${n2||''}" class="h-photo"/>`
+      : '';
 
     const links = p.links.map(l =>
       `<a class="h-link" href="${l.href}"${l.external ? ' target="_blank" rel="noopener"' : ''}>${l.label}</a>`
@@ -48,8 +67,9 @@ const UI = (() => {
     ).join('');
 
     q('#view-home').innerHTML = `
+      ${photoHtml}
       <p class="h-eyebrow">${p.eyebrow}</p>
-      <h1 class="h-name">${namePart1}<br/><span>${namePart2}</span></h1>
+      <h1 class="h-name">${n1}<br/><span>${n2||''}</span></h1>
       <p class="h-role">${p.role}</p>
       <p class="h-bio">${p.bio}</p>
       <div class="h-links">${links}</div>
@@ -58,17 +78,20 @@ const UI = (() => {
     `;
   }
 
-  // ── Section renderers ────────────────────────────────────────
+  // ── Section router ───────────────────────────────────────────
   function renderSection(id) {
     const sec = CONTENT[id];
     const vs  = q('#view-section');
-    if (!sec) { vs.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding-top:2rem">Coming soon.</p>'; return; }
+    if (!sec) {
+      vs.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding-top:2rem">Coming soon.</p>';
+      return;
+    }
 
-    const backBtn = `<button class="s-back" onclick="UI.goHome()">
+    const back = `<button class="s-back" onclick="UI.goHome()">
       <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>All sections
     </button>`;
 
-    let h = `${backBtn}
+    let h = `${back}
       <p class="s-eyebrow">${sec.eyebrow}</p>
       <h2 class="s-title">${sec.title}</h2>
       <p class="s-sub">${sec.sub}</p>`;
@@ -80,10 +103,11 @@ const UI = (() => {
     vs.innerHTML = h;
   }
 
+  // ── Research ─────────────────────────────────────────────────
   function renderResearch(sec) {
     return sec.subsections.map(ss => `
       <div class="divider"></div>
-      <p class="s-eyebrow" style="color:var(--blue)">${ss.tag}</p>
+      <p class="s-eyebrow" style="color:var(--blue)" id="rs_${ss.id}">${ss.tag}</p>
       <p class="subsec-head">${ss.title}</p>
       <p class="subsec-sub">${ss.sub}</p>
       ${ss.items.map(it => `
@@ -98,18 +122,19 @@ const UI = (() => {
     `).join('');
   }
 
+  // ── CV ───────────────────────────────────────────────────────
   function renderCV(sec) {
     const facts = sec.facts.map(f =>
       `<div class="fact-card"><p class="fk">${f.k}</p><p class="fv">${f.v.replace('\n','<br/>')}</p></div>`
     ).join('');
 
-    // id map so sub/leaf node clicks can scroll to the right section
-    const headIds = { Publications: 'cvhead_pubs', Teaching: 'cvhead_teach', Skills: 'cvhead_skills' };
+    // Each cvSection gets an anchor id: cv_edu, cv_pubs, cv_teach, cv_skills,
+    // cv_posters, cv_awards, cv_grants — matching the sub-node ids in data.js
     const cvSecs = sec.cvSections.map(s => `
-      <p class="cv-head" id="${headIds[s.head] || 'cvhead_' + s.head.toLowerCase()}">${s.head}</p>
+      <p class="cv-head" id="${s.anchorId || ''}">${s.head}</p>
       ${s.items.map(it => `
         <div class="cv-row">
-          <span class="cv-yr"></span>
+          <span class="cv-yr">${it.year || ''}</span>
           <div class="cv-d"><strong>${it.title}</strong><span>${it.sub}</span></div>
         </div>
       `).join('')}
@@ -119,10 +144,10 @@ const UI = (() => {
       ? `<hr class="divider"/><p style="font-size:.78rem;color:var(--muted)"><a href="${sec.cvPdfPath}" style="color:var(--blue)">Download full CV (PDF) →</a></p>`
       : '';
 
-    // Education anchor sits above the fact-grid (cv_edu sub-node scrolls here)
-    return `<div id="cvhead_edu"></div><div class="fact-grid">${facts}</div>${cvSecs}${pdf}`;
+    return `<div id="cv_edu"></div><div class="fact-grid">${facts}</div>${cvSecs}${pdf}`;
   }
 
+  // ── Media ────────────────────────────────────────────────────
   function renderMedia(sec) {
     const rows = (items, tag) => items.map(it =>
       `<div class="mrow">
@@ -132,85 +157,53 @@ const UI = (() => {
       </div>`
     ).join('');
 
-    // anchor ids match the mediaMap in scrollToSubNode / scrollToLeafNode
     return `
-      <p class="cv-head" id="media_notes">Notes</p>
+      <p class="cv-head" id="m_notes">Notes</p>
       ${rows(sec.notes, 'Note')}
-      <p class="cv-head" id="media_videos">Videos worth watching</p>
+      <p class="cv-head" id="m_videos">Videos worth watching</p>
       ${rows(sec.videos, 'YouTube')}
-      <p class="cv-head" id="media_books">Books</p>
+      <p class="cv-head" id="m_books">Books</p>
       ${rows(sec.books, 'Book')}
     `;
   }
 
-  // ── Detail expansion ─────────────────────────────────────────
+  // ── Detail cards (Research) ───────────────────────────────────
   function getAllResearchItems() {
     return (CONTENT.research?.subsections || []).flatMap(s => s.items);
   }
 
-  // ── Scroll helpers (sub and leaf clicks for all sections) ────
-
-  // Maps sub-node id → the anchor element id to scroll to on the right panel
-  function scrollToSubNode(parentId, subId) {
-    // Research: scroll to first card of that subsection
+  // ── Sub/leaf scroll resolution ────────────────────────────────
+  // Returns the DOM element id to scroll to for a given sub-node click.
+  // For research: the subsection eyebrow. For cv/media: the anchor id
+  // which matches sub-node ids directly (cv_edu, m_notes, etc.)
+  function anchorForSub(parentId, subId) {
     if (parentId === 'research') {
-      const sec = CONTENT.research;
-      const ss  = sec?.subsections?.find(s => s.id === subId);
-      const el  = ss?.items?.length ? document.getElementById('card_' + ss.items[0].id) : null;
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      const ss = CONTENT.research?.subsections?.find(s => s.id === subId);
+      return ss ? 'rs_' + ss.id : null;
     }
-    // CV: scroll to the matching cv-head by data attribute
-    if (parentId === 'cv') {
-      const headMap = { cv_edu: 'edu', cv_pubs: 'pubs', cv_teach: 'teach', cv_skills: 'skills' };
-      const el = document.getElementById('cvhead_' + (headMap[subId] || subId));
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-    }
-    // Media: scroll to the matching media section head
-    if (parentId === 'media') {
-      const mediaMap = { m_notes: 'media_notes', m_videos: 'media_videos', m_books: 'media_books' };
-      const el = document.getElementById(mediaMap[subId]);
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-    }
+    // cv and media sub-node ids are used directly as anchor ids
+    return subId;
   }
 
-  // Maps leaf click → scroll + optional detail open
-  function scrollToLeafNode(grandParentId, parentId, leafIdx) {
-    if (grandParentId === 'research') {
-      const sec = CONTENT.research;
-      const ss  = sec?.subsections?.find(s => s.id === parentId);
-      if (ss?.items?.[leafIdx]) {
-        UI.toggleDetail(ss.items[leafIdx].id, grandParentId);
-      }
-      return;
-    }
-    if (grandParentId === 'cv') {
-      const headMap = { cv_edu: 'edu', cv_pubs: 'pubs', cv_teach: 'teach', cv_skills: 'skills' };
-      const el = document.getElementById('cvhead_' + (headMap[parentId] || parentId));
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    if (grandParentId === 'media') {
-      const mediaMap = { m_notes: 'media_notes', m_videos: 'media_videos', m_books: 'media_books' };
-      const el = document.getElementById(mediaMap[parentId]);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  // Returns anchor id for a leaf click (grandParent = main section id)
+  function anchorForLeaf(grandParentId, parentId) {
+    if (grandParentId === 'research') return 'rs_' + parentId;
+    return parentId; // cv_edu, cv_pubs, m_notes, etc. — same as sub id
   }
 
-  // ── Mouse event wiring ───────────────────────────────────────
+  // ── Canvas event wiring ───────────────────────────────────────
   function wireCanvas(canvasEl) {
     const tt = q('#tooltip');
 
     canvasEl.addEventListener('mousemove', e => {
       const r  = canvasEl.getBoundingClientRect();
-      const mx = e.clientX - r.left;
-      const my = e.clientY - r.top;
-      const n  = GraphEngine.onMouseMove(mx, my);
+      const n  = GraphEngine.onMouseMove(e.clientX - r.left, e.clientY - r.top);
       canvasEl.style.cursor = n ? 'pointer' : 'default';
       if (n && (n.type === 'leaf' || n.type === 'sub')) {
-        tt.textContent    = n.label.replace('\n', ' · ');
-        tt.style.left     = (e.clientX + 16) + 'px';
-        tt.style.top      = (e.clientY - 10) + 'px';
-        tt.style.opacity  = '1';
+        tt.textContent   = n.label.replace('\n', ' · ');
+        tt.style.left    = (e.clientX + 16) + 'px';
+        tt.style.top     = (e.clientY - 10) + 'px';
+        tt.style.opacity = '1';
       } else {
         tt.style.opacity = '0';
       }
@@ -224,13 +217,11 @@ const UI = (() => {
 
     canvasEl.addEventListener('click', e => {
       const r  = canvasEl.getBoundingClientRect();
-      const mx = e.clientX - r.left;
-      const my = e.clientY - r.top;
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
       const n  = GraphEngine.onClick(mx, my);
       GraphEngine.spawnRipple(mx, my, n?.glow || n?.color || '#e8a020');
 
-      if (!n)               { UI.goHome(); return; }
-      if (n.type === 'hub') { UI.goHome(); return; }
+      if (!n || n.type === 'hub') { UI.goHome(); return; }
 
       if (n.type === 'main') {
         if (currentSection === n.id) UI.goHome();
@@ -239,31 +230,53 @@ const UI = (() => {
       }
 
       if (n.type === 'sub') {
-        const wasActive = currentSubState === n.id;
-        currentSubState = wasActive ? null : n.id;
-        if (wasActive) { GraphEngine.clearSubState(); }
-        else {
+        const wasActive = currentSub === n.id;
+        currentSub = wasActive ? null : n.id;
+        if (wasActive) {
+          GraphEngine.clearSubState();
+        } else {
           GraphEngine.setSubState(n.id);
-          UI.activateSection(n.parentId);
-          setTimeout(() => scrollToSubNode(n.parentId, n.id), 120);
+          const anchor = anchorForSub(n.parentId, n.id);
+          // If we're already on the right section, just scroll.
+          // Otherwise switch section and then scroll.
+          if (currentSection === n.parentId) {
+            if (anchor) scrollTo(anchor, 60);
+          } else {
+            UI.activateSectionAt(n.parentId, anchor);
+          }
         }
         return;
       }
 
       if (n.type === 'leaf') {
         GraphEngine.setSubState(n.parentId);
-        currentSubState = n.parentId;
-        UI.activateSection(n.grandParentId);
-        setTimeout(() => scrollToLeafNode(n.grandParentId, n.parentId, n.idx), 150);
+        currentSub = n.parentId;
+        const anchor = anchorForLeaf(n.grandParentId, n.parentId);
+
+        if (currentSection === n.grandParentId) {
+          // Section already shown — scroll and open detail if research
+          if (n.grandParentId === 'research') {
+            const ss = CONTENT.research?.subsections?.find(s => s.id === n.parentId);
+            if (ss?.items?.[n.idx]) UI.toggleDetail(ss.items[n.idx].id, 'research');
+          } else {
+            if (anchor) scrollTo(anchor, 60);
+          }
+        } else {
+          if (n.grandParentId === 'research') {
+            UI.activateSectionAt(n.grandParentId, null);
+            setTimeout(() => {
+              const ss = CONTENT.research?.subsections?.find(s => s.id === n.parentId);
+              if (ss?.items?.[n.idx]) UI.toggleDetail(ss.items[n.idx].id, 'research');
+            }, 180);
+          } else {
+            UI.activateSectionAt(n.grandParentId, anchor);
+          }
+        }
       }
     });
   }
 
-  // ── State tracking ───────────────────────────────────────────
-  let currentSection  = 'home';
-  let currentSubState = null;
-
-  // ── Public API ───────────────────────────────────────────────
+  // ── Public API ────────────────────────────────────────────────
   return {
 
     init() {
@@ -275,19 +288,26 @@ const UI = (() => {
     },
 
     goHome() {
-      currentSection = 'home'; currentSubState = null;
-      GraphEngine.setHome();
-      GraphEngine.clearSubState();
+      currentSection = 'home'; currentSub = null;
+      GraphEngine.setHome(); GraphEngine.clearSubState();
       showHome();
     },
 
+    // Activate section, scroll to top
     activateSection(id) {
       currentSection = id;
       GraphEngine.setSection(id);
-      showSection(id);
+      showSection(id, null);
     },
 
-    toggleDetail(itemId, secId) {
+    // Activate section and scroll to a specific anchor inside it
+    activateSectionAt(id, anchorId) {
+      currentSection = id;
+      GraphEngine.setSection(id);
+      showSection(id, anchorId);
+    },
+
+    toggleDetail(itemId) {
       const det  = document.getElementById('det_' + itemId);
       const card = document.getElementById('card_' + itemId);
       if (!det) return;
@@ -298,8 +318,6 @@ const UI = (() => {
         openDetId = null;
         return;
       }
-
-      // Close previous
       if (openDetId) {
         const pd = document.getElementById('det_' + openDetId);
         const pc = document.getElementById('card_' + openDetId);
@@ -309,11 +327,9 @@ const UI = (() => {
       openDetId = itemId;
       if (card) card.classList.add('active');
 
-      // Find item
       const item = getAllResearchItems().find(i => i.id === itemId);
       if (!item?.detail) return;
       const d = item.detail;
-
       const links = d.links?.length
         ? `<div class="det-links">${d.links.map(l => `<a class="det-link" href="${l.href}" target="_blank">${l.label}</a>`).join('')}</div>`
         : '';
