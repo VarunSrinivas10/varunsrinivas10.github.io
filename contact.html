@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact — Varun Venkatesh</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <span class="nav-brand">Varun Venkatesh</span>
+    <button class="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="publications.html">Publications</a></li>
+      <li><a href="projects.html">Projects</a></li>
+      <li><a href="cv.html">CV</a></li>
+      <li><a href="contact.html" class="active">Contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="page-wrapper">
+  <div class="page-header">
+    <h1>Contact</h1>
+    <p>Get in touch for collaborations, questions, or to say hello.</p>
+  </div>
+
+  <div class="contact-grid">
+
+    <div class="contact-info">
+      <p><strong>Varun S. Venkatesh</strong></p>
+      <p>PhD Candidate<br/>Department of Materials Science &amp; Engineering<br/>University of Michigan</p>
+      <p style="margin-top:1rem;"><strong>Email</strong><br/><a href="mailto:vsvenkat@umich.edu">vsvenkat@umich.edu</a></p>
+      <p style="margin-top:1rem;"><strong>Office</strong><br/>H.H. Dow Building<br/>2300 Hayward St<br/>Ann Arbor, MI 48109</p>
+      <p style="margin-top:1rem;"><strong>Lab</strong><br/><a href="https://shahanilab.engin.umich.edu" target="_blank" rel="noopener">Shahani Lab for Materials Characterization</a></p>
+    </div>
+
+    <!--
+      The contact form below uses Formspree (https://formspree.io) — a free service
+      that forwards submissions to your email with no backend required.
+      Steps:
+        1. Sign up at formspree.io
+        2. Create a new form and copy your unique endpoint URL
+        3. Replace "YOUR_FORM_ID" in the action attribute below
+    -->
+    <form
+      class="contact-form"
+      action="https://formspree.io/f/YOUR_FORM_ID"
+      method="POST"
+    >
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" autocomplete="name" required placeholder="Your name" />
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" autocomplete="email" required placeholder="your@email.com" />
+
+      <label for="subject">Subject</label>
+      <input type="text" id="subject" name="subject" placeholder="Brief subject" />
+
+      <label for="message">Message</label>
+      <textarea id="message" name="message" required placeholder="Your message..."></textarea>
+
+      <button type="submit">Send message</button>
+    </form>
+
+  </div>
+</main>
+
+<footer>
+  <p>&copy; 2026 Varun S. Venkatesh &mdash; University of Michigan</p>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

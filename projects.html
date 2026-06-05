@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Projects — Varun Venkatesh</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <span class="nav-brand">Varun Venkatesh</span>
+    <button class="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="publications.html">Publications</a></li>
+      <li><a href="projects.html" class="active">Projects</a></li>
+      <li><a href="cv.html">CV</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="page-wrapper">
+  <div class="page-header">
+    <h1>Projects</h1>
+    <p>Research themes and active investigations.</p>
+  </div>
+
+  <div class="projects-grid">
+
+    <div class="project-card">
+      <h3>Grain Boundary Feature Engineering</h3>
+      <p>Two-stage statistical downselection (Pearson correlation + Kruskal-Wallis) to identify the minimal set of grain boundary descriptors — triple-line count, quadruple junction count, Coxeter residual, GB area, perimeter, misorientation angle, CSL flag, and curvature spread — that discriminate kinetic outcomes in equiaxed Al polycrystals.</p>
+      <span class="project-tag">Synchrotron DCT</span>
+      <span class="project-tag">Statistics</span>
+      <span class="project-tag">Microstructure</span>
+    </div>
+
+    <div class="project-card">
+      <h3>Graph Neural Networks for Grain Boundary Classification</h3>
+      <p>Edge-centric message-passing GNN operating on 3-hop grain boundary subgraphs. No node attributes are used; all information lives on edges. Trained with AdamW and cosine decay to classify grain boundary outcomes (persist / appear / disappear) with cross-entropy loss and early stopping on macro-F1.</p>
+      <span class="project-tag">GNN</span>
+      <span class="project-tag">PyTorch Geometric</span>
+      <span class="project-tag">Machine Learning</span>
+    </div>
+
+    <div class="project-card">
+      <h3>3D Tomographic Visualization: MoO₃/Fe₂O₃ Reaction</h3>
+      <p>MATLAB pipeline for co-registering, segmenting, and rendering pre- and post-reaction synchrotron tomography data of MoO₃/Fe₂O₃ powder compacts. Includes log-polar FFT phase correlation for registration, isosurface rendering with custom RGB color schemes, and depth-sorted transparency for overlapping phases.</p>
+      <span class="project-tag">MATLAB</span>
+      <span class="project-tag">Tomography</span>
+      <span class="project-tag">3D Visualization</span>
+    </div>
+
+    <div class="project-card">
+      <h3>PolyProc: Microstructural Feature Extraction</h3>
+      <p>Computational pipeline for extracting grain- and grain-boundary-scale geometric and crystallographic features from 3D DCT datasets. Interfaced with MTEX for misorientation calculations and used upstream of the GNN and feature engineering workflows.</p>
+      <span class="project-tag">Python</span>
+      <span class="project-tag">MTEX</span>
+      <span class="project-tag">DCT</span>
+    </div>
+
+    <div class="project-card">
+      <h3>Grain Boundary Kinetics Derivation (3D Kelvin Cell)</h3>
+      <p>Analytical extension of Mattissen et al. (Acta Materialia, 2005) to three dimensions using Kelvin cell geometry, deriving corrected grain boundary velocity accounting for triple-line drag and quadruple node drag in a self-consistent framework.</p>
+      <span class="project-tag">Theory</span>
+      <span class="project-tag">Grain Growth</span>
+      <span class="project-tag">Kinetics</span>
+    </div>
+
+    <div class="project-card">
+      <h3>Nanotomography: Al–Al₃Ni Directional Solidification</h3>
+      <p>Prior-constrained silhouette carving for 3D reconstruction of Al–Al₃Ni eutectic microstructures imaged at the FXI beamline (NSLS-II), targeting quantitative characterization of phase morphology in directionally solidified samples.</p>
+      <span class="project-tag">NSLS-II</span>
+      <span class="project-tag">Reconstruction</span>
+      <span class="project-tag">Solidification</span>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <p>&copy; 2026 Varun S. Venkatesh &mdash; University of Michigan</p>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>
